@@ -1,0 +1,38 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/app/**/*.{ts,tsx}",
+    "src/providers/AppProviders.tsx",
+    "eslint.config.js",
+    "app.config.ts"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "app.config.ts"],
+  "ignore": [
+    "src/test/**",
+    "src/shared/hooks/use-app-state.ts",
+    "src/shared/hooks/use-debounce.ts",
+    "src/shared/lib/**"
+  ],
+  "ignoreDependencies": [
+    "lefthook",
+    "@commitlint/cli",
+    "@commitlint/config-conventional",
+    "msw",
+    "jest-expo",
+    "expo-symbols",
+    "expo-web-browser",
+    "expo-device",
+    "expo-glass-effect",
+    "@shopify/flash-list",
+    "@expo/ui",
+    "expo-font",
+    "expo-image",
+    "expo-status-bar",
+    "eslint-plugin-import",
+    "typescript-eslint"
+  ],
+  "ignoreBinaries": ["maestro"],
+  "ignoreIssues": {
+    "src/**": ["exports", "types", "nsExports", "enumMembers", "files", "duplicates"]
+  }
+}

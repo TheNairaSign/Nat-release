@@ -1,0 +1,7 @@
+appId: com.natcycle.app.dev
+---
+- launchApp
+- tapOn:
+    id: "Continue (scaffold stub)"
+    optional: true
+- tapOn: "Continue (scaffold stub)"

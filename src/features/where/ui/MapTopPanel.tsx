@@ -1,0 +1,296 @@
+import { Pressable, ScrollView, View } from 'react-native';
+
+import { capitalizeChip } from '@/core/materials';
+import { eventsLabel, type MapPanelFocus, type WherePlace } from '@/core/where';
+import { useTheme } from '@/shared/theme';
+import { FilterGlyph, SearchGlyph } from '@/shared/ui/icons/glyphs';
+import { Text } from '@/shared/ui/Text';
+
+import { MapSearchPanel } from './MapSearchPanel';
+
+export function MapTopPanel({
+  focus,
+  onFocus,
+  chips,
+  chipsLoading,
+  selectedMaterial,
+  onSelectMaterial,
+  searchOpen,
+  onOpenSearch,
+  onCloseSearch,
+  searchQuery,
+  onSearchQuery,
+  searchResults,
+  onSelectPlace,
+  filterOpen,
+  onToggleFilter,
+  hasActiveFilters,
+  eventsCount,
+  eventsReady,
+  organization,
+}: {
+  focus: MapPanelFocus;
+  onFocus: (focus: MapPanelFocus) => void;
+  chips: string[];
+  chipsLoading: boolean;
+  selectedMaterial: string | null;
+  onSelectMaterial: (material: string | null) => void;
+  searchOpen: boolean;
+  onOpenSearch: () => void;
+  onCloseSearch: () => void;
+  searchQuery: string;
+  onSearchQuery: (value: string) => void;
+  searchResults: WherePlace[];
+  onSelectPlace: (place: WherePlace) => void;
+  filterOpen: boolean;
+  onToggleFilter: () => void;
+  hasActiveFilters: boolean;
+  eventsCount: number;
+  eventsReady: boolean;
+  organization?: string | null;
+}) {
+  const theme = useTheme();
+  const iconActive = filterOpen || hasActiveFilters;
+
+  return (
+    <View>
+      <ScrollView
+        horizontal
+        pagingEnabled={false}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 10, paddingRight: 12 }}
+      >
+        <View
+          testID="where-points-card"
+          style={{
+            width: 320,
+            minHeight: theme.layout.whereCardMinHeight,
+            backgroundColor: theme.color.mapPoints,
+            borderRadius: theme.radius.card28,
+            padding: 20,
+          }}
+        >
+          {searchOpen ? (
+            <MapSearchPanel
+              query={searchQuery}
+              onQuery={onSearchQuery}
+              onCancel={onCloseSearch}
+              results={searchResults}
+              onSelect={onSelectPlace}
+            />
+          ) : (
+            <>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  {organization ? (
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontFamily: theme.font.semibold,
+                        color: theme.color.textMuted,
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.8,
+                        marginBottom: 4,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {organization}
+                    </Text>
+                  ) : null}
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      fontFamily: theme.font.bold,
+                      color: theme.color.text,
+                    }}
+                  >
+                    Diversion Points
+                  </Text>
+                  <Text variant="small" muted style={{ marginTop: 4 }}>
+                    Where to drop-off, recycle and more
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 4 }}>
+                  <Pressable
+                    testID="where-search"
+                    accessibilityRole="button"
+                    accessibilityLabel="Search locations"
+                    onPress={onOpenSearch}
+                    style={{
+                      width: theme.layout.whereIconBtn,
+                      height: theme.layout.whereIconBtn,
+                      borderRadius: theme.radius.pill,
+                      borderWidth: 1,
+                      borderColor: theme.color.borderSolid,
+                      backgroundColor: theme.color.surface,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <SearchGlyph color={theme.color.textMuted} size={14} />
+                  </Pressable>
+                  <Pressable
+                    testID="where-filter"
+                    accessibilityRole="button"
+                    onPress={onToggleFilter}
+                    style={{
+                      width: theme.layout.whereIconBtn,
+                      height: theme.layout.whereIconBtn,
+                      borderRadius: theme.radius.pill,
+                      borderWidth: 1,
+                      borderColor: iconActive
+                        ? theme.color.ink
+                        : theme.color.borderSolid,
+                      backgroundColor: iconActive
+                        ? theme.color.ink
+                        : theme.color.surface,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <FilterGlyph
+                      color={
+                        iconActive
+                          ? theme.color.accentText
+                          : theme.color.textMuted
+                      }
+                    />
+                  </Pressable>
+                </View>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginTop: 12, height: theme.layout.chipRowHeight }}
+                contentContainerStyle={{ gap: 8, alignItems: 'center' }}
+              >
+                {chipsLoading
+                  ? [0, 1, 2].map((key) => (
+                      <View
+                        key={key}
+                        style={{
+                          width: 72,
+                          height: 36,
+                          borderRadius: theme.radius.pill,
+                          backgroundColor: 'rgba(0,0,0,0.08)',
+                        }}
+                      />
+                    ))
+                  : ['All', ...chips].map((chip) => {
+                      const value = chip === 'All' ? null : chip;
+                      const active =
+                        selectedMaterial === value && focus === 'points';
+                      return (
+                        <Pressable
+                          key={chip}
+                          testID={`where-chip-${chip}`}
+                          onPress={() => {
+                            onFocus('points');
+                            onSelectMaterial(value);
+                          }}
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 8,
+                            borderRadius: theme.radius.pill,
+                            backgroundColor: active
+                              ? theme.color.ink
+                              : theme.color.mapChipIdle,
+                            borderWidth: active ? 0 : 1,
+                            borderColor: 'rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          <Text
+                            variant="small"
+                            style={{
+                              fontFamily: theme.font.semibold,
+                              color: active
+                                ? theme.color.accentText
+                                : theme.color.ink,
+                            }}
+                          >
+                            {chip === 'All' ? 'All' : capitalizeChip(chip)}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+              </ScrollView>
+            </>
+          )}
+        </View>
+
+        <Pressable
+          testID="where-events-card"
+          onPress={() => onFocus('events')}
+          style={{
+            width: 280,
+            minHeight: theme.layout.whereCardMinHeight,
+            backgroundColor: theme.color.mapEvents,
+            borderRadius: theme.radius.card28,
+            padding: 20,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {organization ? (
+            <Text
+              style={{
+                fontSize: 11,
+                fontFamily: theme.font.semibold,
+                color: theme.color.textMuted,
+                textTransform: 'uppercase',
+                letterSpacing: 0.8,
+                marginBottom: 4,
+              }}
+              numberOfLines={1}
+            >
+              {organization}
+            </Text>
+          ) : null}
+          <Text
+            style={{
+              fontSize: 21.6,
+              fontFamily: theme.font.bold,
+              color: theme.color.text,
+              textAlign: 'center',
+            }}
+          >
+            Diversion Events
+          </Text>
+          <Text
+            variant="small"
+            muted
+            style={{ marginTop: 4, textAlign: 'center' }}
+          >
+            Campaigns and pop-up collections
+          </Text>
+          <View
+            style={{
+              marginTop: 12,
+              paddingHorizontal: 20,
+              paddingVertical: 8,
+              borderRadius: theme.radius.pill,
+              backgroundColor: theme.color.mapChipIdle,
+              borderWidth: 1,
+              borderColor: 'rgba(0,0,0,0.05)',
+            }}
+          >
+            <Text
+              variant="small"
+              style={{
+                fontFamily: theme.font.semibold,
+                color: theme.color.label,
+              }}
+            >
+              {eventsReady ? eventsLabel(eventsCount) : '…'}
+            </Text>
+          </View>
+        </Pressable>
+      </ScrollView>
+    </View>
+  );
+}

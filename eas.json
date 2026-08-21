@@ -1,0 +1,57 @@
+{
+  "cli": {
+    "version": ">= 16.0.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "base": {
+      "node": "22.23.1"
+    },
+    "development": {
+      "extends": "base",
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "env": {
+        "APP_VARIANT": "development",
+        "EXPO_PUBLIC_APP_VARIANT": "development",
+        "EXPO_PUBLIC_API_URL": "https://natcyclewebapp-be-production.up.railway.app",
+        "EXPO_PUBLIC_AI_API_URL": "https://natcycleai-production.up.railway.app/api/v1",
+        "EXPO_PUBLIC_URS_API_URL": "https://urs-server-production.up.railway.app/api/v1"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "channel": "preview",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_VARIANT": "preview",
+        "EXPO_PUBLIC_APP_VARIANT": "preview",
+        "EXPO_PUBLIC_API_URL": "https://natcyclewebapp-be-production.up.railway.app",
+        "EXPO_PUBLIC_AI_API_URL": "https://natcycleai-production.up.railway.app/api/v1",
+        "EXPO_PUBLIC_URS_API_URL": "https://urs-server-production.up.railway.app/api/v1"
+      }
+    },
+    "production": {
+      "extends": "base",
+      "autoIncrement": true,
+      "channel": "production",
+      "env": {
+        "APP_VARIANT": "production",
+        "EXPO_PUBLIC_APP_VARIANT": "production",
+        "EXPO_PUBLIC_API_URL": "https://natcyclewebapp-be-production.up.railway.app",
+        "EXPO_PUBLIC_AI_API_URL": "https://natcycleai-production.up.railway.app/api/v1",
+        "EXPO_PUBLIC_URS_API_URL": "https://urs-server-production.up.railway.app/api/v1"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

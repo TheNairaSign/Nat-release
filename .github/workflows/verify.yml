@@ -1,0 +1,39 @@
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_URL: https://natcycle.app
+      EXPO_PUBLIC_AI_API_URL: https://ai.example/api/v1
+      EXPO_PUBLIC_AI_API_KEY: test-ai-key
+      EXPO_PUBLIC_GOOGLE_API_KEY: test-google-key
+      EXPO_PUBLIC_MAPBOX_TOKEN: test-mapbox-token
+      EXPO_PUBLIC_URS_API_URL: https://urs.example/api/v1
+      EXPO_PUBLIC_URS_API_KEY: test-urs-key
+      EXPO_PUBLIC_APP_VARIANT: development
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm verify
+
+  sdk-staleness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/check-sdk-staleness.mjs

@@ -1,0 +1,317 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Platform, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { PENDING_DROPOFF_KEY } from '@/core/dropoff';
+import { findMatchingMaterial } from '@/core/materials';
+import {
+  DEFAULT_MAP_CENTER,
+  createDropoffHref,
+  directionsUrl,
+  filterPlaces,
+  markerColorForPlace,
+  markerShapeForPlace,
+  markerSizeForZoom,
+  pickPlaceById,
+  recordMaterialType,
+  searchPlaces,
+  type MapPanelFocus,
+  type WhereFilterId,
+  type WherePlace,
+} from '@/core/where';
+import {
+  fetchMapPartners,
+  fetchWhereChips,
+  fetchWherePlaces,
+  sendCampaignReminder,
+  whereChipsQueryKey,
+  wherePartnersQueryKey,
+  wherePlacesQueryKey,
+} from '../api/where-api';
+import { FilterMenu } from '../ui/FilterMenu';
+import { LocationSheet } from '../ui/LocationSheet';
+import { MapMarkerPin } from '../ui/MapMarkerPin';
+import { MapTopPanel } from '../ui/MapTopPanel';
+import { useQuery } from '@/shared/api';
+import { usePorts } from '@/shared/hooks/use-ports';
+import { useTheme } from '@/shared/theme';
+import { ChromeScreen } from '@/shared/ui';
+import { WhereMap } from '@/shared/ui/maps/WhereMap';
+
+export type WhereSignInIntent = 'record' | 'reminder';
+
+export function WhereScreen({
+  guest = false,
+  type,
+  organization,
+  locationId,
+  onRequireSignIn,
+}: {
+  guest?: boolean;
+  type?: string;
+  organization?: string;
+  locationId?: string;
+  onRequireSignIn?: (intent?: WhereSignInIntent) => void;
+}) {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const { http, navigation, location, linking, kv } = usePorts();
+  const [focus, setFocus] = useState<MapPanelFocus>('points');
+  const [materialOverride, setMaterialOverride] = useState<
+    string | null | undefined
+  >(undefined);
+  const [platform, setPlatform] = useState<WhereFilterId>('all');
+  const [orgOverride, setOrgOverride] = useState<string | null | undefined>(
+    undefined,
+  );
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [picked, setPicked] = useState<WherePlace | null | undefined>(
+    undefined,
+  );
+  const [origin, setOrigin] = useState<{ latitude: number; longitude: number }>(
+    {
+      latitude: DEFAULT_MAP_CENTER.latitude,
+      longitude: DEFAULT_MAP_CENTER.longitude,
+    },
+  );
+  const [hasGps, setHasGps] = useState(false);
+  const [zoom, setZoom] = useState(12);
+  const [reminderPending, setReminderPending] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await location.requestPermission();
+      const position = await location.getCurrentPosition();
+      if (cancelled) return;
+      if (position) {
+        setOrigin(position);
+        setHasGps(true);
+        setZoom(14);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [location]);
+
+  const chipsQuery = useQuery({
+    queryKey: whereChipsQueryKey,
+    queryFn: () => fetchWhereChips(http),
+  });
+  const selectedMaterial =
+    materialOverride === undefined
+      ? chipsQuery.data && type
+        ? findMatchingMaterial(type, chipsQuery.data)
+        : null
+      : materialOverride;
+  const orgFilter =
+    orgOverride === undefined ? (organization ?? null) : orgOverride;
+
+  const placesQuery = useQuery({
+    queryKey: [...wherePlacesQueryKey, origin, selectedMaterial],
+    queryFn: () =>
+      fetchWherePlaces(http, origin, selectedMaterial ?? undefined),
+  });
+  const partnersQuery = useQuery({
+    queryKey: wherePartnersQueryKey,
+    queryFn: () => fetchMapPartners(http),
+  });
+
+  const selected =
+    picked === undefined
+      ? pickPlaceById(placesQuery.data ?? [], locationId)
+      : picked;
+  const panelFocus = selected?.kind === 'campaign' ? 'events' : focus;
+  const visible = useMemo(() => {
+    const filtered = filterPlaces(placesQuery.data ?? [], {
+      organization: orgFilter,
+      platform,
+      focus: panelFocus,
+    });
+    return searchOpen ? searchPlaces(filtered, searchQuery) : filtered;
+  }, [
+    placesQuery.data,
+    orgFilter,
+    platform,
+    panelFocus,
+    searchOpen,
+    searchQuery,
+  ]);
+  const eventCount = (placesQuery.data ?? []).filter(
+    (place) => place.kind === 'campaign',
+  ).length;
+  const camera = useMemo(
+    () =>
+      selected ? { latitude: selected.lat, longitude: selected.lng } : origin,
+    [selected, origin],
+  );
+  const cameraZoom = selected ? 16 : zoom;
+
+  async function onRecord(place: WherePlace) {
+    const href =
+      place.kind === 'simple'
+        ? createDropoffHref({
+            type: recordMaterialType(place),
+            mode: 'simple',
+            locationId: place.id,
+          })
+        : createDropoffHref({ type: recordMaterialType(place) });
+    if (guest) {
+      await kv.set(PENDING_DROPOFF_KEY, href);
+      onRequireSignIn?.('record');
+      return;
+    }
+    navigation.navigate(href);
+  }
+
+  function onDirections(place: WherePlace) {
+    const platformKey = Platform.OS === 'ios' ? 'ios' : 'android';
+    void linking.openUrl(
+      directionsUrl(platformKey, place.lat, place.lng, place.name),
+    );
+  }
+
+  async function onReminder(place: WherePlace) {
+    if (guest) {
+      onRequireSignIn?.('reminder');
+      return;
+    }
+    setReminderPending(true);
+    try {
+      await sendCampaignReminder(http, place.id);
+    } finally {
+      setReminderPending(false);
+    }
+  }
+
+  return (
+    <ChromeScreen bleed>
+      <View style={{ flex: 1, backgroundColor: theme.color.mapCanvas }}>
+        <WhereMap
+          center={camera}
+          zoom={cameraZoom}
+          showsUser={hasGps}
+          markers={visible.map((place) => ({
+            id: place.id,
+            lat: place.lat,
+            lng: place.lng,
+            selected: selected?.id === place.id,
+          }))}
+          onMarkerPress={(id) => {
+            const match = visible.find((place) => place.id === id);
+            if (match) setPicked(match);
+          }}
+        >
+          {(marker) => {
+            const place = visible.find((item) => item.id === marker.id);
+            if (!place) return null;
+            return (
+              <MapMarkerPin
+                color={markerColorForPlace(place)}
+                shape={markerShapeForPlace(place)}
+                size={markerSizeForZoom(cameraZoom, marker.selected)}
+                selected={marker.selected}
+                inactive={place.isActive === false || place.phase === 'ended'}
+              />
+            );
+          }}
+        </WhereMap>
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            paddingTop: Math.max(8, insets.top),
+            paddingHorizontal: 12,
+          }}
+        >
+          <MapTopPanel
+            focus={panelFocus}
+            organization={orgFilter}
+            onFocus={(next) => {
+              setFocus(next);
+              setPicked(null);
+            }}
+            chips={chipsQuery.data ?? []}
+            chipsLoading={chipsQuery.isPending}
+            selectedMaterial={selectedMaterial}
+            onSelectMaterial={(material) => {
+              setMaterialOverride(material);
+              setPicked(null);
+              if (material) setPlatform('all');
+            }}
+            searchOpen={searchOpen}
+            onOpenSearch={() => {
+              setSearchOpen(true);
+              setFilterOpen(false);
+              setFocus('points');
+            }}
+            onCloseSearch={() => {
+              setSearchOpen(false);
+              setSearchQuery('');
+            }}
+            searchQuery={searchQuery}
+            onSearchQuery={setSearchQuery}
+            searchResults={visible}
+            onSelectPlace={(place) => {
+              setPicked(place);
+              setSearchOpen(false);
+            }}
+            filterOpen={filterOpen}
+            onToggleFilter={() => setFilterOpen((open) => !open)}
+            hasActiveFilters={platform !== 'all' || Boolean(orgFilter)}
+            eventsCount={eventCount}
+            eventsReady={!placesQuery.isPending}
+          />
+        </View>
+        {selected ? (
+          <View
+            style={{
+              position: 'absolute',
+              left: 12,
+              right: 12,
+              bottom: theme.layout.tabBarReserve + insets.bottom - 24,
+            }}
+          >
+            <LocationSheet
+              place={selected}
+              reminderPending={reminderPending}
+              onClose={() => setPicked(null)}
+              onRecord={() => {
+                void onRecord(selected);
+              }}
+              onDirections={() => onDirections(selected)}
+              onReminder={() => {
+                void onReminder(selected);
+              }}
+            />
+          </View>
+        ) : null}
+        <FilterMenu
+          open={filterOpen}
+          selected={platform}
+          organization={orgFilter}
+          partners={partnersQuery.data ?? []}
+          onClose={() => setFilterOpen(false)}
+          onSelect={(id) => {
+            setPlatform(id);
+            if (id === 'mobile') {
+              setFocus('events');
+              setPicked(null);
+            } else {
+              setFocus('points');
+            }
+          }}
+          onSelectOrganization={(name) => {
+            setOrgOverride(name);
+            setPicked(null);
+          }}
+        />
+      </View>
+    </ChromeScreen>
+  );
+}
