@@ -108,7 +108,8 @@ export default function createConfig(_ctx: ConfigContext): ExpoConfig {
     extra: {
       appVariant: variant,
       eas: {
-        projectId: process.env.EAS_PROJECT_ID,
+        projectId:
+          process.env.EAS_PROJECT_ID ?? '72460051-4e29-4ea4-9a65-a7d376bda490',
       },
     },
   };
