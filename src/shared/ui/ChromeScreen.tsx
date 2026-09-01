@@ -7,9 +7,14 @@ import { useTheme } from '@/shared/theme';
 export function ChromeScreen({
   children,
   bleed = false,
+  fill = false,
 }: {
   children: ReactNode;
   bleed?: boolean;
+  /** Let content fill the viewport so a trailing block can be pushed to the
+   *  bottom with `marginTop: 'auto'` — the native stand-in for web's fixed
+   *  bottom composer on the AI page. */
+  fill?: boolean;
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -32,6 +37,7 @@ export function ChromeScreen({
         maxWidth: theme.layout.appColumnMaxWidth,
         width: '100%',
         alignSelf: 'center',
+        ...(fill ? { flexGrow: 1 } : null),
       }}
     >
       {children}

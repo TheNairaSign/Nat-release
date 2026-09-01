@@ -12,7 +12,11 @@ describe('ResetPasswordScreen', () => {
       },
     });
     await waitFor(() => {
-      expect(replace).toHaveBeenCalledWith('/forgot-password');
+      // Web toasts "Invalid reset link" before redirecting; mobile carries
+      // the reason in the query so forgot-password can show it inline.
+      expect(replace).toHaveBeenCalledWith(
+        '/forgot-password?notice=invalidResetLink',
+      );
     });
   });
 

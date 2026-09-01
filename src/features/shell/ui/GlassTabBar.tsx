@@ -7,13 +7,14 @@ import {
   type ConsumerTabId,
 } from '@/core/navigation';
 import { useTheme } from '@/shared/theme';
+import { ChevronGlyph } from '@/shared/ui/icons/glyphs';
+import { MapPinGlyph } from '@/shared/ui/icons/featherGlyphs';
 import {
-  ChevronGlyph,
-  HomeGlyph,
-  PinGlyph,
-  StarGlyph,
-  UserGlyph,
-} from '@/shared/ui/icons/glyphs';
+  NavHomeGlyph,
+  NavStarGlyph,
+  NavUserGlyph,
+} from '@/shared/ui/icons/navGlyphs';
+import { GlassSurface } from '@/shared/ui/GlassSurface';
 import { Text } from '@/shared/ui/Text';
 
 export function GlassTabBar({
@@ -99,16 +100,21 @@ export function GlassTabBar({
           <ChevronGlyph color="rgba(255,255,255,0.7)" direction="down" />
         </Pressable>
 
-        <View
+        {/* Real glassmorphism: web blurs the backdrop with
+            `backdrop-filter: blur(20px) saturate(180%)` and paints
+            rgba(255,255,255,0.55) over it. A flat translucent fill alone —
+            which is what this was — never looks like glass. */}
+        <GlassSurface
           testID="glass-tab-bar"
           style={{
             borderRadius: theme.layout.tabBarRadius,
-            paddingHorizontal: theme.space[2],
-            paddingVertical: theme.space[3],
             borderWidth: 1,
             borderColor: theme.glass.border,
-            backgroundColor: theme.glass.fill,
             ...theme.shadow.glassNav,
+          }}
+          contentStyle={{
+            paddingHorizontal: theme.space[2],
+            paddingVertical: theme.space[3],
             flexDirection: 'row',
             justifyContent: 'space-around',
             alignItems: 'center',
@@ -158,15 +164,17 @@ export function GlassTabBar({
               </Pressable>
             );
           })}
-        </View>
+        </GlassSurface>
       </View>
     </View>
   );
 }
 
 function TabGlyph({ id, color }: { id: ConsumerTabId; color: string }) {
-  if (id === 'home') return <HomeGlyph color={color} />;
-  if (id === 'impact') return <StarGlyph color={color} />;
-  if (id === 'where') return <PinGlyph color={color} />;
-  return <UserGlyph color={color} />;
+  // Sizes come from dashboardNav.tsx: BiHome 20, FaStar 18, FiMapPin 20,
+  // FaUser 18. Web mixes icon families here on purpose.
+  if (id === 'home') return <NavHomeGlyph color={color} size={20} />;
+  if (id === 'impact') return <NavStarGlyph color={color} size={18} />;
+  if (id === 'where') return <MapPinGlyph color={color} size={20} />;
+  return <NavUserGlyph color={color} size={18} />;
 }

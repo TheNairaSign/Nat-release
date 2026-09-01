@@ -36,12 +36,15 @@ const current =
 export default function createConfig(_ctx: ConfigContext): ExpoConfig {
   return {
     name: current.name,
-    slug: current.slug,
+    slug: 'natcycle-reactnative-mobile',
+    owner: 'sundayprincedevs-team',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     scheme: current.scheme,
-    userInterfaceStyle: 'automatic',
+    // Web has no dark mode; keep the native shell light so system dark mode
+    // does not repaint status bar / native surfaces around a light UI.
+    userInterfaceStyle: 'light',
     ios: {
       bundleIdentifier: current.bundleIdentifier,
       icon: './assets/expo.icon',
@@ -85,8 +88,7 @@ export default function createConfig(_ctx: ConfigContext): ExpoConfig {
       [
         '@rnmapbox/maps',
         {
-          RNMapboxMapsVersion: '11.16.2',
-          RNMapboxMapsDownloadToken: process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN,
+          RNMapboxMapsVersion: '11.23.1',
         },
       ],
       [
@@ -103,7 +105,10 @@ export default function createConfig(_ctx: ConfigContext): ExpoConfig {
       reactCompiler: true,
     },
     runtimeVersion: {
-      policy: 'fingerprint',
+      policy: 'appVersion',
+    },
+    updates: {
+      url: 'https://u.expo.dev/72460051-4e29-4ea4-9a65-a7d376bda490',
     },
     extra: {
       appVariant: variant,

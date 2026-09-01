@@ -2,14 +2,13 @@ import { useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 
 import {
-  ACTION_MAP_CENTER,
+  actionMapPoints,
   calculateUserContributions,
   dayCounts,
   impactStats,
   impactUnitForCard,
   sinceLabel,
   uniqueActiveDays,
-  yearHeatCells,
 } from '@/core/impact';
 import {
   fetchImpactActivities,
@@ -24,8 +23,11 @@ import { useQuery } from '@/shared/api';
 import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
 import { ChromeScreen, Text } from '@/shared/ui';
+import { ImpactBreakdownCard } from '../ui/ImpactBreakdownCard';
+import { SnapCarousel } from '@/shared/ui/SnapCarousel';
+import { ImpactActionMapCard } from '../ui/ImpactActionMapCard';
+import { ImpactGreenCommitsCard } from '../ui/ImpactGreenCommitsCard';
 import { ChevronGlyph } from '@/shared/ui/icons/glyphs';
-import { WhereMap } from '@/shared/ui/maps/WhereMap';
 
 export function ImpactScreen() {
   const theme = useTheme();
@@ -57,16 +59,8 @@ export function ImpactScreen() {
   ).filter((row) => row.totalDropoffs > 0 || row.totalQuantity > 0);
   const year = new Date().getFullYear();
   const counts = dayCounts(activities);
-  const cells = yearHeatCells(year, counts);
   const days = uniqueActiveDays(activities, year);
-  const mapMarkers = activities
-    .filter((item) => item.lat != null && item.lng != null)
-    .map((item) => ({
-      id: item.id,
-      lat: item.lat ?? 0,
-      lng: item.lng ?? 0,
-      selected: false,
-    }));
+  const actionPoints = actionMapPoints(activities);
   const initials = (user?.firstName?.[0] ?? 'N') + (user?.lastName?.[0] ?? '');
 
   if (profileQuery.isPending && !user) {
@@ -173,35 +167,14 @@ export function ImpactScreen() {
         }}
       >
         {contributions.slice(0, 4).map((row) => (
-          <View
-            key={row.materialType}
-            style={{
-              width: '48%',
-              backgroundColor: theme.color.lime,
-              borderRadius: theme.radius.lg,
-              padding: 16,
-              minHeight: 100,
-            }}
-          >
-            <Text style={{ fontFamily: theme.font.semibold }}>{row.label}</Text>
-            <Text>
-              {Math.round(row.totalQuantity)}{' '}
-              {impactUnitForCard(row.materialType)}
-            </Text>
-            <View
-              style={{
-                alignSelf: 'flex-start',
-                marginTop: 8,
-                backgroundColor: theme.color.ink,
-                borderRadius: theme.radius.pill,
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-              }}
-            >
-              <Text variant="small" style={{ color: theme.color.accentText }}>
-                {Math.round(row.carbonUnits)} CU
-              </Text>
-            </View>
+          <View key={row.materialType} style={{ width: '48%' }}>
+            <ImpactBreakdownCard
+              label={row.label}
+              quantity={row.totalQuantity}
+              unitLabel={impactUnitForCard(row.materialType)}
+              carbonUnits={row.carbonUnits}
+              materialType={row.materialType}
+            />
           </View>
         ))}
       </View>
@@ -242,99 +215,32 @@ export function ImpactScreen() {
           </Text>
         </Pressable>
       </View>
-      {tab === 'commits' ? (
-        <View
-          style={{
-            backgroundColor: theme.color.surface,
-            borderRadius: theme.radius.card28,
-            borderWidth: 1,
-            borderColor: theme.color.borderSolid,
-            padding: 16,
-            minHeight: 440,
-          }}
-        >
-          <Text variant="small" muted>
-            {days} waste diversions in {year}
-          </Text>
-          <View
-            style={{
-              height: 24,
-              backgroundColor: theme.color.limeTrack,
-              borderRadius: 8,
-              marginVertical: 8,
-            }}
-          >
-            <View
-              style={{
-                width: `${Math.min(100, (days / 365) * 100)}%`,
-                height: '100%',
-                backgroundColor: theme.color.ink,
-                borderRadius: 8,
-              }}
-            />
-          </View>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 3 }}>
-            {cells.map((cell) => (
-              <View
-                key={cell.key}
-                style={{
-                  width: 11,
-                  height: 11,
-                  borderRadius: 3,
-                  backgroundColor:
-                    cell.level === 0
-                      ? theme.color.heatEmpty
-                      : cell.level === 1
-                        ? theme.color.heatLow
-                        : cell.level === 2
-                          ? theme.color.heatMid
-                          : theme.color.commitFill,
-                }}
-              />
-            ))}
-          </View>
-          <Text variant="small" style={{ marginTop: 12 }}>
-            All time: {Math.floor(user?.carbonUnits ?? 0).toLocaleString()}CU
-          </Text>
-        </View>
-      ) : (
-        <View
-          style={{
-            height: 440,
-            borderRadius: theme.radius.card28,
-            overflow: 'hidden',
-          }}
-        >
-          <WhereMap
-            center={
-              mapMarkers[0]
-                ? { latitude: mapMarkers[0].lat, longitude: mapMarkers[0].lng }
-                : ACTION_MAP_CENTER
-            }
-            zoom={10}
-            showsUser={false}
-            markers={mapMarkers}
-            onMarkerPress={() => undefined}
-          >
-            {() => (
-              <View
-                style={{
-                  width: 16,
-                  height: 16,
-                  borderRadius: 8,
-                  backgroundColor: theme.color.commitFill,
-                }}
-              />
-            )}
-          </WhereMap>
-          <Text
-            variant="small"
-            style={{ position: 'absolute', bottom: 12, left: 12 }}
-          >
-            {mapMarkers.length ? 'Your activity' : 'No drops yet'}
-          </Text>
-        </View>
-      )}
+      {/* Web pairs the tab labels with a SnapCardCarousel holding BOTH cards
+          (Impact.tsx:252-266) — swipeable, snapping, with the next card
+          peeking. Mobile swapped a single card on tab press, so there was no
+          carousel, no swipe and no peek. */}
+      <SnapCarousel
+        activeIndex={tab === 'commits' ? 0 : 1}
+        onActiveIndexChange={(index) => setTab(index === 0 ? 'commits' : 'map')}
+        cardWidthRatio={0.92}
+        padLeft={4}
+        gap={12}
+      >
+        {[
+          <ImpactGreenCommitsCard
+            key="commits"
+            counts={counts}
+            activeDays={days}
+            totalDiversions={activities.length}
+            allTimeCarbonUnits={user?.carbonUnits ?? 0}
+          />,
+          <ImpactActionMapCard
+            key="map"
+            points={actionPoints}
+            loading={dropoffsQuery.isPending}
+          />,
+        ]}
+      </SnapCarousel>
       <Pressable
         testID="impact-share"
         onPress={() => {

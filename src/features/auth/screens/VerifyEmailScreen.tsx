@@ -74,7 +74,6 @@ export function VerifyEmailScreen() {
           />
           <BrandIllustration
             height={theme.layout.verifyIllustrationHeight}
-            resizeMode="cover"
             style={{ alignSelf: 'center' }}
           />
           <View

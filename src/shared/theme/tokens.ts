@@ -98,7 +98,7 @@ export const palette = {
     aiPurple: '#faf5ff',
     aiPurpleBorder: '#f3e8ff',
     highlight: '#E8F9C8',
-    slateCta: '#1e2937',
+    slateCta: '#1e293b',
     commitFill: '#1B5E20',
     heatEmpty: '#f1f5f9',
     heatLow: '#B8F27A',

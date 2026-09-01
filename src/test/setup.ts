@@ -37,8 +37,11 @@ jest.mock('expo-device', () => ({
 }));
 
 jest.mock('@rnmapbox/maps', () => {
+  // jest.mock factories are hoisted; require is the supported way to load deps.
+  /* eslint-disable @typescript-eslint/no-require-imports */
   const React = require('react');
   const { Pressable, View } = require('react-native');
+  /* eslint-enable @typescript-eslint/no-require-imports */
   return {
     __esModule: true,
     default: {

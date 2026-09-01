@@ -1,12 +1,25 @@
-import { Pressable, ScrollView, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, View } from 'react-native';
 
 import { capitalizeChip } from '@/core/materials';
-import { eventsLabel, type MapPanelFocus, type WherePlace } from '@/core/where';
+import {
+  eventsLabel,
+  type MapPanelFocus,
+  type OrganizationResult,
+  type WherePlace,
+} from '@/core/where';
 import { useTheme } from '@/shared/theme';
 import { FilterGlyph, SearchGlyph } from '@/shared/ui/icons/glyphs';
 import { Text } from '@/shared/ui/Text';
 
+import { SnapCarousel } from '@/shared/ui/SnapCarousel';
+
 import { MapSearchPanel } from './MapSearchPanel';
+
+// Web's SnapCardCarousel for Where: `cardWidth="w-[92%]"`, `pl-[3%]` /
+// `pr-[3%]`, `scaleInactive`. Sizing and snapping now live in SnapCarousel;
+// only the 3% side pad is page-specific.
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const SIDE_PAD = Math.round(SCREEN_WIDTH * 0.03);
 
 export function MapTopPanel({
   focus,
@@ -28,6 +41,10 @@ export function MapTopPanel({
   eventsCount,
   eventsReady,
   organization,
+  origin,
+  searchOrganizations,
+  onSelectOrganization,
+  searchMaterialTypes,
 }: {
   focus: MapPanelFocus;
   onFocus: (focus: MapPanelFocus) => void;
@@ -48,249 +65,265 @@ export function MapTopPanel({
   eventsCount: number;
   eventsReady: boolean;
   organization?: string | null;
+  /** Passed down so search results can show their distance. */
+  origin?: { latitude: number; longitude: number } | null;
+  searchOrganizations?: OrganizationResult[];
+  onSelectOrganization?: (name: string) => void;
+  searchMaterialTypes?: string[];
 }) {
   const theme = useTheme();
   const iconActive = filterOpen || hasActiveFilters;
 
   return (
     <View>
-      <ScrollView
-        horizontal
-        pagingEnabled={false}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 10, paddingRight: 12 }}
+      <SnapCarousel
+        activeIndex={focus === 'points' ? 0 : 1}
+        onActiveIndexChange={(index) =>
+          onFocus(index === 0 ? 'points' : 'events')
+        }
+        cardWidthRatio={0.92}
+        padLeft={SIDE_PAD}
+        gap={12}
+        scaleInactive
       >
-        <View
-          testID="where-points-card"
-          style={{
-            width: 320,
-            minHeight: theme.layout.whereCardMinHeight,
-            backgroundColor: theme.color.mapPoints,
-            borderRadius: theme.radius.card28,
-            padding: 20,
-          }}
-        >
-          {searchOpen ? (
-            <MapSearchPanel
-              query={searchQuery}
-              onQuery={onSearchQuery}
-              onCancel={onCloseSearch}
-              results={searchResults}
-              onSelect={onSelectPlace}
-            />
-          ) : (
-            <>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <View style={{ flex: 1, paddingRight: 8 }}>
-                  {organization ? (
+        {[
+          <View
+            key="points"
+            testID="where-points-card"
+            style={{
+              minHeight: theme.layout.whereCardMinHeight,
+              backgroundColor: theme.color.mapPoints,
+              borderRadius: theme.radius.card28,
+              padding: 20,
+            }}
+          >
+            {searchOpen ? (
+              <MapSearchPanel
+                query={searchQuery}
+                onQuery={onSearchQuery}
+                onCancel={onCloseSearch}
+                results={searchResults}
+                onSelect={onSelectPlace}
+                origin={origin}
+                organizations={searchOrganizations}
+                onSelectOrganization={onSelectOrganization}
+                materialTypes={searchMaterialTypes}
+                onSelectMaterialType={onSelectMaterial}
+              />
+            ) : (
+              <>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <View style={{ flex: 1, paddingRight: 8 }}>
+                    {organization ? (
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontFamily: theme.font.semibold,
+                          color: theme.color.textMuted,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.8,
+                          marginBottom: 4,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {organization}
+                      </Text>
+                    ) : null}
                     <Text
                       style={{
-                        fontSize: 11,
-                        fontFamily: theme.font.semibold,
-                        color: theme.color.textMuted,
-                        textTransform: 'uppercase',
-                        letterSpacing: 0.8,
-                        marginBottom: 4,
+                        fontSize: 20,
+                        fontFamily: theme.font.bold,
+                        color: theme.color.text,
                       }}
-                      numberOfLines={1}
                     >
-                      {organization}
+                      Diversion Points
                     </Text>
-                  ) : null}
-                  <Text
-                    style={{
-                      fontSize: 20,
-                      fontFamily: theme.font.bold,
-                      color: theme.color.text,
-                    }}
-                  >
-                    Diversion Points
-                  </Text>
-                  <Text variant="small" muted style={{ marginTop: 4 }}>
-                    Where to drop-off, recycle and more
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', gap: 4 }}>
-                  <Pressable
-                    testID="where-search"
-                    accessibilityRole="button"
-                    accessibilityLabel="Search locations"
-                    onPress={onOpenSearch}
-                    style={{
-                      width: theme.layout.whereIconBtn,
-                      height: theme.layout.whereIconBtn,
-                      borderRadius: theme.radius.pill,
-                      borderWidth: 1,
-                      borderColor: theme.color.borderSolid,
-                      backgroundColor: theme.color.surface,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <SearchGlyph color={theme.color.textMuted} size={14} />
-                  </Pressable>
-                  <Pressable
-                    testID="where-filter"
-                    accessibilityRole="button"
-                    onPress={onToggleFilter}
-                    style={{
-                      width: theme.layout.whereIconBtn,
-                      height: theme.layout.whereIconBtn,
-                      borderRadius: theme.radius.pill,
-                      borderWidth: 1,
-                      borderColor: iconActive
-                        ? theme.color.ink
-                        : theme.color.borderSolid,
-                      backgroundColor: iconActive
-                        ? theme.color.ink
-                        : theme.color.surface,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <FilterGlyph
-                      color={
-                        iconActive
-                          ? theme.color.accentText
-                          : theme.color.textMuted
-                      }
-                    />
-                  </Pressable>
-                </View>
-              </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={{ marginTop: 12, height: theme.layout.chipRowHeight }}
-                contentContainerStyle={{ gap: 8, alignItems: 'center' }}
-              >
-                {chipsLoading
-                  ? [0, 1, 2].map((key) => (
-                      <View
-                        key={key}
-                        style={{
-                          width: 72,
-                          height: 36,
-                          borderRadius: theme.radius.pill,
-                          backgroundColor: 'rgba(0,0,0,0.08)',
-                        }}
+                    <Text variant="small" muted style={{ marginTop: 4 }}>
+                      Where to drop-off, recycle and more
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 4 }}>
+                    <Pressable
+                      testID="where-search"
+                      accessibilityRole="button"
+                      accessibilityLabel="Search locations"
+                      onPress={onOpenSearch}
+                      style={{
+                        width: theme.layout.whereIconBtn,
+                        height: theme.layout.whereIconBtn,
+                        borderRadius: theme.radius.pill,
+                        borderWidth: 1,
+                        borderColor: theme.color.borderSolid,
+                        backgroundColor: theme.color.surface,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <SearchGlyph color={theme.color.textMuted} size={14} />
+                    </Pressable>
+                    <Pressable
+                      testID="where-filter"
+                      accessibilityRole="button"
+                      onPress={onToggleFilter}
+                      style={{
+                        width: theme.layout.whereIconBtn,
+                        height: theme.layout.whereIconBtn,
+                        borderRadius: theme.radius.pill,
+                        borderWidth: 1,
+                        borderColor: iconActive
+                          ? theme.color.ink
+                          : theme.color.borderSolid,
+                        backgroundColor: iconActive
+                          ? theme.color.ink
+                          : theme.color.surface,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <FilterGlyph
+                        color={
+                          iconActive
+                            ? theme.color.accentText
+                            : theme.color.textMuted
+                        }
                       />
-                    ))
-                  : ['All', ...chips].map((chip) => {
-                      const value = chip === 'All' ? null : chip;
-                      const active =
-                        selectedMaterial === value && focus === 'points';
-                      return (
-                        <Pressable
-                          key={chip}
-                          testID={`where-chip-${chip}`}
-                          onPress={() => {
-                            onFocus('points');
-                            onSelectMaterial(value);
-                          }}
+                    </Pressable>
+                  </View>
+                </View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={{ marginTop: 12, height: theme.layout.chipRowHeight }}
+                  contentContainerStyle={{ gap: 8, alignItems: 'center' }}
+                >
+                  {chipsLoading
+                    ? [0, 1, 2].map((key) => (
+                        <View
+                          key={key}
                           style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 8,
+                            width: 72,
+                            height: 36,
                             borderRadius: theme.radius.pill,
-                            backgroundColor: active
-                              ? theme.color.ink
-                              : theme.color.mapChipIdle,
-                            borderWidth: active ? 0 : 1,
-                            borderColor: 'rgba(0,0,0,0.1)',
+                            backgroundColor: 'rgba(0,0,0,0.08)',
                           }}
-                        >
-                          <Text
-                            variant="small"
+                        />
+                      ))
+                    : ['All', ...chips].map((chip) => {
+                        const value = chip === 'All' ? null : chip;
+                        const active =
+                          selectedMaterial === value && focus === 'points';
+                        return (
+                          <Pressable
+                            key={chip}
+                            testID={`where-chip-${chip}`}
+                            onPress={() => {
+                              onFocus('points');
+                              onSelectMaterial(value);
+                            }}
                             style={{
-                              fontFamily: theme.font.semibold,
-                              color: active
-                                ? theme.color.accentText
-                                : theme.color.ink,
+                              paddingHorizontal: 16,
+                              paddingVertical: 8,
+                              borderRadius: theme.radius.pill,
+                              backgroundColor: active
+                                ? theme.color.ink
+                                : theme.color.mapChipIdle,
+                              borderWidth: active ? 0 : 1,
+                              borderColor: 'rgba(0,0,0,0.1)',
                             }}
                           >
-                            {chip === 'All' ? 'All' : capitalizeChip(chip)}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-              </ScrollView>
-            </>
-          )}
-        </View>
+                            <Text
+                              variant="small"
+                              style={{
+                                fontFamily: theme.font.semibold,
+                                color: active
+                                  ? theme.color.accentText
+                                  : theme.color.ink,
+                              }}
+                            >
+                              {chip === 'All' ? 'All' : capitalizeChip(chip)}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                </ScrollView>
+              </>
+            )}
+          </View>,
 
-        <Pressable
-          testID="where-events-card"
-          onPress={() => onFocus('events')}
-          style={{
-            width: 280,
-            minHeight: theme.layout.whereCardMinHeight,
-            backgroundColor: theme.color.mapEvents,
-            borderRadius: theme.radius.card28,
-            padding: 20,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {organization ? (
+          <Pressable
+            key="events"
+            testID="where-events-card"
+            onPress={() => onFocus('events')}
+            style={{
+              minHeight: theme.layout.whereCardMinHeight,
+              backgroundColor: theme.color.mapEvents,
+              borderRadius: theme.radius.card28,
+              padding: 20,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {organization ? (
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontFamily: theme.font.semibold,
+                  color: theme.color.textMuted,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.8,
+                  marginBottom: 4,
+                }}
+                numberOfLines={1}
+              >
+                {organization}
+              </Text>
+            ) : null}
             <Text
               style={{
-                fontSize: 11,
-                fontFamily: theme.font.semibold,
-                color: theme.color.textMuted,
-                textTransform: 'uppercase',
-                letterSpacing: 0.8,
-                marginBottom: 4,
+                fontSize: 21.6,
+                fontFamily: theme.font.bold,
+                color: theme.color.text,
+                textAlign: 'center',
               }}
-              numberOfLines={1}
             >
-              {organization}
+              Diversion Events
             </Text>
-          ) : null}
-          <Text
-            style={{
-              fontSize: 21.6,
-              fontFamily: theme.font.bold,
-              color: theme.color.text,
-              textAlign: 'center',
-            }}
-          >
-            Diversion Events
-          </Text>
-          <Text
-            variant="small"
-            muted
-            style={{ marginTop: 4, textAlign: 'center' }}
-          >
-            Campaigns and pop-up collections
-          </Text>
-          <View
-            style={{
-              marginTop: 12,
-              paddingHorizontal: 20,
-              paddingVertical: 8,
-              borderRadius: theme.radius.pill,
-              backgroundColor: theme.color.mapChipIdle,
-              borderWidth: 1,
-              borderColor: 'rgba(0,0,0,0.05)',
-            }}
-          >
             <Text
               variant="small"
+              muted
+              style={{ marginTop: 4, textAlign: 'center' }}
+            >
+              Campaigns and pop-up collections
+            </Text>
+            <View
               style={{
-                fontFamily: theme.font.semibold,
-                color: theme.color.label,
+                marginTop: 12,
+                paddingHorizontal: 20,
+                paddingVertical: 8,
+                borderRadius: theme.radius.pill,
+                backgroundColor: theme.color.mapChipIdle,
+                borderWidth: 1,
+                borderColor: 'rgba(0,0,0,0.05)',
               }}
             >
-              {eventsReady ? eventsLabel(eventsCount) : '…'}
-            </Text>
-          </View>
-        </Pressable>
-      </ScrollView>
+              <Text
+                variant="small"
+                style={{
+                  fontFamily: theme.font.semibold,
+                  color: theme.color.label,
+                }}
+              >
+                {eventsReady ? eventsLabel(eventsCount) : '…'}
+              </Text>
+            </View>
+          </Pressable>,
+        ]}
+      </SnapCarousel>
     </View>
   );
 }

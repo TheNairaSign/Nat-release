@@ -1,5 +1,4 @@
 import { createContext, useContext, type ReactNode } from 'react';
-import { useColorScheme } from 'react-native';
 
 import { fonts } from '@/shared/theme/fonts';
 import { glass } from '@/shared/theme/glass';
@@ -18,7 +17,10 @@ import {
 const ThemeContext = createContext<ThemeTokens | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  // The web client has no dark mode — `tailwind.config.js` defines a single
+  // palette and no `dark:` variants — so following the device scheme made the
+  // app diverge from the product on any phone set to dark. Pinned to light.
+  const scheme = 'light' as const;
   const value: ThemeTokens = {
     space,
     radius,

@@ -5,6 +5,7 @@ import {
   type MaterialChipInput,
 } from '@/core/materials';
 import { pickRandomSlice } from '@/core/home';
+import { unwrapDataObject } from '@/shared/api/unwrap';
 import { getEnv } from '@/shared/config/env';
 import type { HttpClient } from '@/shared/ports/http';
 
@@ -70,7 +71,12 @@ export async function fetchHomeProfile(http: HttpClient): Promise<HomeProfile> {
       ready: false,
     };
   }
-  const parsed = profileSchema.safeParse(response.body ?? {});
+  // `GET /profile` answers `{ data: { ...user } }`. Web unwraps twice —
+  // axios `response.data`, then `res.data` in Dashboard.tsx:66-67 — so the user
+  // fields live one level down. Parsing the envelope instead silently yields a
+  // profile of all-undefined (every schema field is optional), which is how the
+  // dashboard lost its Carbon Units, greeting name and email-verified flag.
+  const parsed = profileSchema.safeParse(unwrapDataObject(response.body) ?? {});
   if (!parsed.success) {
     return {
       carbonUnits: 0,

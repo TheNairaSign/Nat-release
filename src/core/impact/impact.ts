@@ -348,3 +348,260 @@ export const ACTION_MAP_CENTER = {
   latitude: 41.3111,
   longitude: -72.9296,
 } as const;
+
+/**
+ * Icon name for a material on the Impact breakdown card.
+ *
+ * Transcribed from `getMaterialIcon` in client/src/utils/materialContributions.ts.
+ * Note this is a *different* mapping from the Where-page marker engine: the
+ * breakdown card uses FaBox for aluminium (not FaBoxOpen) and has its own
+ * biohazard/capsules glyphs, so the two tables are intentionally separate.
+ */
+export type BreakdownIcon =
+  | 'bottle-water'
+  | 'shirt'
+  | 'wine-glass'
+  | 'recycle'
+  | 'leaf'
+  | 'file-text'
+  | 'book'
+  | 'cog'
+  | 'laptop'
+  | 'can'
+  | 'biohazard'
+  | 'capsules';
+
+const BREAKDOWN_ICONS: Record<string, BreakdownIcon> = {
+  plastic: 'bottle-water',
+  fabric: 'shirt',
+  fabrics: 'shirt',
+  glass: 'wine-glass',
+  mixed: 'recycle',
+  organic: 'leaf',
+  organics: 'leaf',
+  paper: 'file-text',
+  books: 'book',
+  metal: 'cog',
+  metals: 'cog',
+  electronics: 'laptop',
+  electronic: 'laptop',
+  ewaste: 'laptop',
+  'e-waste': 'laptop',
+  'e waste': 'laptop',
+  aluminium: 'can',
+  aluminum: 'can',
+  hazardous: 'biohazard',
+  drug: 'capsules',
+  drugs: 'capsules',
+};
+
+export function breakdownIcon(materialType: string): BreakdownIcon {
+  const key = (materialType || '').toLowerCase().trim();
+  const direct = BREAKDOWN_ICONS[key];
+  if (direct) return direct;
+  if (
+    key.includes('electronic') ||
+    key.includes('e-waste') ||
+    key.includes('ewaste') ||
+    key.includes('laptop') ||
+    key.includes('computer')
+  ) {
+    return 'laptop';
+  }
+  return 'recycle';
+}
+
+export type GridCell = HeatCell & {
+  /** Padding days that fall outside the selected period render transparent. */
+  inPeriod: boolean;
+  /** Local date, for the tap tooltip. */
+  date: Date;
+};
+
+function localKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function toCell(
+  date: Date,
+  counts: Record<string, number>,
+  inPeriod: boolean,
+): GridCell {
+  const key = localKey(date);
+  const count = inPeriod ? (counts[key] ?? 0) : 0;
+  const level = count <= 0 ? 0 : count === 1 ? 1 : count <= 3 ? 2 : 3;
+  return { key, count, level, inPeriod, date };
+}
+
+/**
+ * Year heat grid as **7 rows** (Sun..Sat), matching ImpactGreenCommitsCard on
+ * web: the year is padded backwards to the preceding Sunday and forwards to a
+ * whole week, then days are dealt out with `rows[index % 7]` so each column is
+ * one week. The previous mobile version flowed the cells with `flexWrap`,
+ * which produced a completely different shape.
+ */
+export function yearHeatRows(
+  year: number,
+  counts: Record<string, number>,
+): GridCell[][] {
+  const days: Date[] = [];
+  const end = new Date(year, 11, 31);
+  for (let d = new Date(year, 0, 1); d <= end; d.setDate(d.getDate() + 1)) {
+    days.push(new Date(d));
+  }
+  for (let first = days[0]; first && first.getDay() !== 0; first = days[0]) {
+    const prev = new Date(first);
+    prev.setDate(prev.getDate() - 1);
+    days.unshift(prev);
+  }
+  while (days.length % 7 !== 0) {
+    const last = days[days.length - 1];
+    if (!last) break;
+    const next = new Date(last);
+    next.setDate(next.getDate() + 1);
+    days.push(next);
+  }
+
+  const rows: GridCell[][] = [[], [], [], [], [], [], []];
+  days.forEach((day, index) => {
+    rows[index % 7]?.push(toCell(day, counts, day.getFullYear() === year));
+  });
+  return rows;
+}
+
+/**
+ * Month grid as weeks of 7, leading/trailing blanks included — the `monthGrid`
+ * memo in ImpactGreenCommitsCard.
+ */
+export function monthHeatWeeks(
+  year: number,
+  month: number,
+  counts: Record<string, number>,
+): (GridCell | null)[][] {
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month + 1, 0);
+  const cells: (GridCell | null)[] = [];
+  for (let i = 0; i < first.getDay(); i++) cells.push(null);
+  for (let d = 1; d <= last.getDate(); d++) {
+    cells.push(toCell(new Date(year, month, d), counts, true));
+  }
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const weeks: (GridCell | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+  return weeks;
+}
+
+export const ANNUAL_DAYS_GOAL = 365;
+
+export const MONTH_NAMES = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const;
+
+/** `goNext` is clamped so the user cannot page past the current period. */
+export function canGoNext(
+  viewMode: 'month' | 'year',
+  year: number,
+  month: number,
+  now: Date,
+): boolean {
+  const realYear = now.getFullYear();
+  if (viewMode === 'year') return year < realYear;
+  let m = month + 1;
+  let y = year;
+  if (m > 11) {
+    m = 0;
+    y += 1;
+  }
+  return !(y > realYear || (y === realYear && m > now.getMonth()));
+}
+
+export type ActionMapPoint = {
+  key: string;
+  lat: number;
+  lng: number;
+  quantity: number;
+  label: string;
+};
+
+/** Rejects null island and out-of-range pairs, as web `coordsFromUnknown` does. */
+function validCoord(lat?: number, lng?: number): boolean {
+  if (lat == null || lng == null) return false;
+  if (Number.isNaN(lat) || Number.isNaN(lng)) return false;
+  if (lat === 0 && lng === 0) return false;
+  return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+}
+
+/**
+ * Collapses activities onto shared coordinates, summing quantity — the
+ * `aggregatePoints` step in ImpactActionMapCard.tsx. Web keys on the
+ * coordinate rounded to 4dp, so drop-offs at the same site stack into one
+ * larger circle instead of overprinting as identical dots.
+ */
+export function actionMapPoints(items: DropoffActivity[]): ActionMapPoint[] {
+  const map = new Map<string, ActionMapPoint>();
+  for (const item of items) {
+    if (!validCoord(item.lat, item.lng)) continue;
+    const lat = item.lat as number;
+    const lng = item.lng as number;
+    const key = `${lng.toFixed(4)},${lat.toFixed(4)}`;
+    const existing = map.get(key);
+    if (existing) {
+      existing.quantity += item.quantity;
+    } else {
+      map.set(key, {
+        key,
+        lat,
+        lng,
+        quantity: item.quantity,
+        label: item.name,
+      });
+    }
+  }
+  return Array.from(map.values());
+}
+
+/** Web `circleSize`: 12px → 52px on a sqrt scale against the busiest point. */
+export function actionMapCircleSize(quantity: number, max: number): number {
+  const minPx = 12;
+  const maxPx = 52;
+  if (max <= 0) return minPx;
+  const t = Math.sqrt(quantity / max);
+  return Math.round(minPx + t * (maxPx - minPx));
+}
+
+/** Web `zoomForSpan`, used after fitting the points' bounding box. */
+export function actionMapZoom(lngSpan: number, latSpan: number): number {
+  const span = Math.max(lngSpan, latSpan, 0.01);
+  if (span > 2) return 8;
+  if (span > 0.8) return 9;
+  if (span > 0.35) return 10;
+  if (span > 0.12) return 11;
+  return 11.5;
+}
+
+/**
+ * Caption under the map: the site name when there is exactly one point,
+ * otherwise "Your activity" — matching web's `placeLabel`.
+ */
+export function actionMapLabel(
+  points: ActionMapPoint[],
+  loading: boolean,
+): string {
+  if (points.length > 1) return 'Your activity';
+  return points[0]?.label || (loading ? 'Loading…' : 'No drops yet');
+}

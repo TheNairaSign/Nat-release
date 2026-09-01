@@ -1,7 +1,21 @@
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
+import {
+  Dimensions,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  TextInput,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AI_CAPABILITIES, aiLandingTitle, type AiMessage } from '@/core/ai';
+import {
+  AI_CAPABILITIES,
+  aiLandingTitle,
+  resolveActionTarget,
+  type AiMessage,
+} from '@/core/ai';
 import {
   askAi,
   clearChatHistory,
@@ -16,9 +30,23 @@ import { useSession } from '@/features/auth';
 import { useQuery } from '@/shared/api';
 import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
-import { ChromeScreen, ScreenBack, Text } from '@/shared/ui';
+import { ChromeScreen, Text } from '@/shared/ui';
+import {
+  CalendarGlyph,
+  MapPinGlyph,
+  TrendingUpGlyph,
+} from '@/shared/ui/icons/featherGlyphs';
 
 const CARD_COLORS = ['#D6EBFF', '#FFE4C4', '#E8F5E9', '#F3E5F5'];
+
+/** Web: w-[72%] of the viewport. */
+const cardWidth = Math.round(Dimensions.get('window').width * 0.72);
+
+const CAPABILITY_GLYPHS = {
+  recycling: MapPinGlyph,
+  events: CalendarGlyph,
+  impact: TrendingUpGlyph,
+} as const;
 
 export function AiScreen({
   initialQuestion,
@@ -28,7 +56,7 @@ export function AiScreen({
   suggestionId?: string;
 }) {
   const theme = useTheme();
-  const { http, navigation, uuid } = usePorts();
+  const { http, navigation, uuid, linking } = usePorts();
   const { session } = useSession();
   const [chatOpen, setChatOpen] = useState(Boolean(initialQuestion));
   const [draft, setDraft] = useState('');
@@ -73,7 +101,11 @@ export function AiScreen({
     enabled: Boolean(initialQuestion),
     queryFn: async () => {
       const question = initialQuestion ?? '';
-      void persistChatMessage(http, question);
+      void persistChatMessage(http, {
+        id: uuid.v4(),
+        role: 'user',
+        text: question,
+      });
       return askAi(http, {
         question,
         userId: session?.userId,
@@ -124,7 +156,7 @@ export function AiScreen({
     const nextHistory = [...thread, userMessage];
     setLocalMessages(nextHistory);
     setPending(true);
-    void persistChatMessage(http, trimmed);
+    void persistChatMessage(http, userMessage);
     const reply = await askAi(http, {
       question: trimmed,
       userId: session?.userId,
@@ -133,16 +165,17 @@ export function AiScreen({
       history: nextHistory,
     });
     setActiveSuggestionId(undefined);
-    setLocalMessages([
-      ...nextHistory,
-      {
-        id: uuid.v4(),
-        role: 'assistant',
-        text: reply.text,
-        tools: reply.tools,
-        options: reply.options,
-      },
-    ]);
+    const assistantMessage: AiMessage = {
+      id: uuid.v4(),
+      role: 'assistant',
+      text: reply.text,
+      tools: reply.tools,
+      options: reply.options,
+    };
+    // Web saves the assistant message too, so its Continue buttons survive a
+    // reload; mobile only ever saved the user's side.
+    void persistChatMessage(http, assistantMessage);
+    setLocalMessages([...nextHistory, assistantMessage]);
     setPending(false);
   }
 
@@ -154,137 +187,245 @@ export function AiScreen({
   }
 
   if (chatOpen) {
+    // Web renders AiChat as `fixed inset-0 z-[60]` — a full-bleed surface over
+    // the whole app, bottom nav included. A Modal is the native equivalent;
+    // rendering it inline left the tab bar floating on top of the thread.
     return (
-      <ChromeScreen>
-        <ScreenBack onPress={() => setChatOpen(false)} />
-        <View style={{ minHeight: 560 }}>
-          <AiChatPanel
-            firstName={firstName}
-            messages={thread}
-            draft={draft}
-            pending={waiting}
-            onDraft={setDraft}
-            onSend={() => {
-              void send(draft);
-            }}
-            onChip={(prompt) => {
-              void send(prompt);
-            }}
-            onTool={(href) => navigation.navigate(href)}
-            onOption={(option) => {
-              void send(option);
-            }}
-            onClear={() => setClearOpen(true)}
+      <Modal
+        visible
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setChatOpen(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.color.surface }}>
+          <View style={{ flex: 1, paddingHorizontal: 16 }}>
+            <AiChatPanel
+              onBack={() => setChatOpen(false)}
+              firstName={firstName}
+              messages={thread}
+              draft={draft}
+              pending={waiting}
+              onDraft={setDraft}
+              onSend={() => {
+                void send(draft);
+              }}
+              onChip={(prompt) => {
+                void send(prompt);
+              }}
+              onAction={(action) => {
+                const target = resolveActionTarget(action);
+                if (!target) return;
+                if (target.kind === 'external') {
+                  void linking.openUrl(target.url);
+                } else {
+                  navigation.navigate(target.href);
+                }
+              }}
+              onOption={(option) => {
+                void send(option);
+              }}
+              onClear={() => setClearOpen(true)}
+            />
+          </View>
+          <ClearModal
+            open={clearOpen}
+            onClose={() => setClearOpen(false)}
+            onClear={onClear}
           />
-        </View>
-        <ClearModal
-          open={clearOpen}
-          onClose={() => setClearOpen(false)}
-          onClear={onClear}
-        />
-      </ChromeScreen>
+        </SafeAreaView>
+      </Modal>
     );
   }
 
   return (
-    <ChromeScreen>
-      <ScreenBack onPress={() => navigation.back()} />
-      <View style={{ alignItems: 'center', marginBottom: 16 }}>
+    <ChromeScreen fill>
+      {/* Header — 68px logo, "Diva" 1.85rem bold, Beta chip */}
+      <View style={{ alignItems: 'center', marginBottom: 20, paddingTop: 4 }}>
         <View
           style={{
             width: 68,
             height: 68,
             borderRadius: 34,
-            backgroundColor: theme.color.lime,
-            alignItems: 'center',
-            justifyContent: 'center',
+            overflow: 'hidden',
+            marginBottom: 10,
           }}
         >
-          <Text style={{ fontFamily: theme.font.bold }}>Diva</Text>
+          <Image
+            source={require('../../../../assets/images/natcycle-ai.png')}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+          />
         </View>
-        <Text style={{ marginTop: 8, fontFamily: theme.font.semibold }}>
-          Diva <Text style={{ color: theme.color.textMuted }}>Beta</Text>
-        </Text>
-      </View>
-      <Text
-        style={{
-          fontSize: 20,
-          fontFamily: theme.font.semibold,
-          textAlign: 'center',
-        }}
-      >
-        {aiLandingTitle(firstName)}
-      </Text>
-      <Pressable
-        testID="ai-open-history"
-        onPress={() => setChatOpen(true)}
-        style={{ marginTop: 8 }}
-      >
-        <Text style={{ textAlign: 'center', textDecorationLine: 'underline' }}>
-          Chat history ›
-        </Text>
-      </Pressable>
-
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: 20 }}>
-        {AI_CAPABILITIES.map((item) => (
-          <Pressable
-            key={item.id}
-            testID={`ai-cap-${item.id}`}
-            onPress={() => {
-              void send(item.prompt);
-            }}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text
             style={{
-              flex: 1,
-              minHeight: 88,
-              borderWidth: 1,
-              borderStyle: 'dashed',
-              borderColor: theme.color.borderSolid,
-              borderRadius: theme.radius.lg,
-              backgroundColor: 'rgba(255,255,255,0.6)',
-              padding: 10,
-              justifyContent: 'center',
+              fontSize: 30,
+              fontFamily: theme.font.bold,
+              color: theme.color.text,
+              letterSpacing: -0.5,
+            }}
+          >
+            Diva
+          </Text>
+          <View
+            style={{
+              backgroundColor: '#F1F5F9',
+              borderRadius: theme.radius.sm,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
             }}
           >
             <Text
-              variant="small"
-              style={{ fontFamily: theme.font.semibold, textAlign: 'center' }}
+              style={{
+                fontSize: 10,
+                fontFamily: theme.font.medium,
+                color: theme.color.textMuted,
+                letterSpacing: 0.5,
+              }}
             >
-              {item.title}
+              BETA
             </Text>
-          </Pressable>
-        ))}
+          </View>
+        </View>
       </View>
 
-      <Text style={{ marginTop: 20, fontFamily: theme.font.medium }}>
-        Quick knowledge
-      </Text>
+      {/* Capability tiles — dashed, icon above label */}
+      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+        {AI_CAPABILITIES.map((item) => {
+          const Glyph = CAPABILITY_GLYPHS[item.id];
+          return (
+            <Pressable
+              key={item.id}
+              testID={`ai-cap-${item.id}`}
+              onPress={() => {
+                void send(item.prompt);
+              }}
+              style={{
+                flex: 1,
+                minHeight: 92,
+                borderWidth: 1,
+                borderStyle: 'dashed',
+                borderColor: '#CBD5E1',
+                borderRadius: theme.radius.lg,
+                backgroundColor: 'rgba(255,255,255,0.6)',
+                paddingHorizontal: 8,
+                paddingVertical: 14,
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              <Glyph color="#64748B" size={22} />
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontFamily: theme.font.medium,
+                  color: '#1E293B',
+                  textAlign: 'center',
+                }}
+              >
+                {item.title}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {/* Suggestion carousel — no section heading on web; "Quick knowledge"
+          is the footer inside each card. */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 10, paddingVertical: 12 }}
+        contentContainerStyle={{ gap: 12, paddingBottom: 4 }}
+        style={{ marginBottom: 24 }}
       >
-        {(suggestionsQuery.data ?? []).map((item, index) => (
-          <Pressable
-            key={item.id}
-            testID={`ai-suggestion-${item.id}`}
-            onPress={() => {
-              setActiveSuggestionId(item.id);
-              void send(item.text, item.id);
-            }}
+        {suggestionsQuery.isPending
+          ? [0, 1].map((i) => (
+              <View
+                key={i}
+                style={{
+                  width: cardWidth,
+                  height: 112,
+                  borderRadius: theme.radius.lg,
+                  backgroundColor: '#F1F5F9',
+                }}
+              />
+            ))
+          : (suggestionsQuery.data ?? []).map((item, index) => (
+              <Pressable
+                key={item.id}
+                testID={`ai-suggestion-${item.id}`}
+                onPress={() => {
+                  setActiveSuggestionId(item.id);
+                  void send(item.text, item.id);
+                }}
+                style={{
+                  width: cardWidth,
+                  minHeight: 116,
+                  borderRadius: theme.radius.lg,
+                  backgroundColor: CARD_COLORS[index % CARD_COLORS.length],
+                  paddingHorizontal: 16,
+                  paddingVertical: 16,
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Text
+                  numberOfLines={3}
+                  style={{
+                    fontSize: 15,
+                    fontFamily: theme.font.semibold,
+                    color: '#1E293B',
+                    lineHeight: 20,
+                  }}
+                >
+                  {item.text}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: theme.color.textMuted,
+                    marginTop: 12,
+                  }}
+                >
+                  Quick knowledge
+                </Text>
+              </Pressable>
+            ))}
+      </ScrollView>
+
+      {/* Greeting + chat history sit directly above the composer on web,
+          which pins the composer near the bottom of the viewport. */}
+      <View
+        style={{ alignItems: 'center', marginBottom: 12, marginTop: 'auto' }}
+      >
+        <Text
+          style={{
+            fontSize: 25,
+            fontFamily: theme.font.bold,
+            color: theme.color.text,
+            textAlign: 'center',
+            letterSpacing: -0.4,
+            lineHeight: 30,
+          }}
+        >
+          {aiLandingTitle(firstName)}
+        </Text>
+        <Pressable
+          testID="ai-open-history"
+          onPress={() => setChatOpen(true)}
+          style={{ marginTop: 10 }}
+        >
+          <Text
             style={{
-              width: 230,
-              borderRadius: theme.radius.lg,
-              backgroundColor: CARD_COLORS[index % CARD_COLORS.length],
-              padding: 16,
+              fontSize: 15,
+              fontFamily: theme.font.semibold,
+              color: '#2E7D32',
             }}
           >
-            <Text numberOfLines={4}>{item.text}</Text>
-            <Text variant="small" muted style={{ marginTop: 12 }}>
-              Quick knowledge
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+            Chat history ›
+          </Text>
+        </Pressable>
+      </View>
 
       <View
         style={{

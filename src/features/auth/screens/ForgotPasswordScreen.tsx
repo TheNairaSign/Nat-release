@@ -12,13 +12,19 @@ import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
 import { Text } from '@/shared/ui';
 
-export function ForgotPasswordScreen() {
+export function ForgotPasswordScreen({ notice }: { notice?: string } = {}) {
   const { t } = useTranslation();
   const theme = useTheme();
   const { http, navigation } = usePorts();
   const [email, setEmail] = useState('');
   const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState('');
+  // A reset link that was missing or expired redirects here; web toasts the
+  // reason, so mobile seeds the same copy into the inline message instead.
+  const [message, setMessage] = useState(() =>
+    notice === 'invalidResetLink' || notice === 'invalidOrExpiredResetLink'
+      ? t(notice)
+      : '',
+  );
   const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {

@@ -3,7 +3,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/shared/theme';
 import { BrandLogo } from '@/shared/ui/BrandMark';
-import { BellGlyph, UserGlyph } from '@/shared/ui/icons/glyphs';
+import { UserGlyph } from '@/shared/ui/icons/glyphs';
+import { BellGlyph } from '@/shared/ui/icons/uiGlyphs';
 import { Text } from '@/shared/ui/Text';
 
 import aiOrb from '@/assets/brand/ai-orb.png';

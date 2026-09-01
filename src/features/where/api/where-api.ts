@@ -130,6 +130,7 @@ function branchesOf(raw: unknown): WhereBranch[] {
         contactNumber:
           typeof row.contactNumber === 'string' ? row.contactNumber : undefined,
         isActive: row.isActive !== false,
+        images: imagesOf(row.images),
       },
     ];
   });

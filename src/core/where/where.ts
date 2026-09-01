@@ -14,7 +14,6 @@ export type WhereFilterId = (typeof WHERE_FILTERS)[number]['id'];
 export type MapPanelFocus = 'points' | 'events';
 export type WherePlaceKind = 'regular' | 'simple' | 'campaign';
 export type CampaignPhase = 'live' | 'upcoming' | 'ended';
-export type MarkerShape = 'squircle' | 'circle' | 'calendar';
 
 export type WhereBranch = {
   name: string;
@@ -23,6 +22,10 @@ export type WhereBranch = {
   lng: number;
   contactNumber?: string;
   isActive: boolean;
+  /** Branch photos. The backend carries these on
+   *  `simpleDropOffLocation.extraLocations[].images` ({ public_id, url }),
+   *  and web prefers them over the parent location's images. */
+  images?: string[];
 };
 
 export type WherePlace = {
@@ -161,41 +164,72 @@ export function pickPlaceById(
   return places.find((place) => place.id === locationId) ?? null;
 }
 
-export function markerShapeForPlace(place: WherePlace): MarkerShape {
-  if (place.kind === 'campaign') return 'calendar';
-  if (place.kind === 'simple') return 'circle';
-  return 'squircle';
-}
-
-const MATERIAL_COLORS: { keys: string[]; color: string }[] = [
-  { keys: ['plastic', 'pet', 'hdpe', 'bottle'], color: '#3b82f6' },
-  { keys: ['paper', 'cardboard', 'book'], color: '#f59e0b' },
-  { keys: ['fabric', 'textile', 'cloth', 'shoe', 'clothes'], color: '#8b5cf6' },
-  { keys: ['glass'], color: '#14b8a6' },
-  { keys: ['aluminium', 'aluminum', 'can'], color: '#94a3b8' },
-  { keys: ['organic', 'food', 'compost'], color: '#65a30d' },
-  { keys: ['electronic', 'ewaste', 'e-waste', 'phone'], color: '#ef4444' },
-  { keys: ['metal', 'steel'], color: '#64748b' },
-  { keys: ['hazard', 'toxic', 'chemical'], color: '#F5D74D' },
-  { keys: ['campaign', 'event'], color: '#e11d48' },
-];
-
-export function markerColorForPlace(place: WherePlace): string {
-  if (place.kind === 'campaign') {
-    if (place.phase === 'upcoming') return '#F5D74D';
-    if (place.phase === 'ended') return '#9ca3af';
-    return '#e11d48';
-  }
-  const hay = place.materials.join(' ').toLowerCase();
-  const match = MATERIAL_COLORS.find((row) =>
-    row.keys.some((key) => hay.includes(key)),
-  );
-  return match?.color ?? '#16a34a';
-}
-
 export function markerSizeForZoom(zoom: number, highlighted: boolean): number {
   const ref = 12.5;
   const scale = Math.min(1.18, Math.max(0.62, 2 ** ((zoom - ref) * 0.4)));
   const base = highlighted ? 56 : 45;
   return Math.max(28, Math.round(base * scale));
+}
+
+/**
+ * Badge text for a search result, from `getLocationTypeLabel` in
+ * client/src/pages/dashboard/where/components/LocationSearchBar.tsx.
+ *
+ * Simple drop-offs show their display tag when they have one, otherwise
+ * "Drop-off". Without this the raw `kind` enum ("regular", "simple",
+ * "campaign") was rendering straight into the UI.
+ */
+export function searchTypeLabel(place: WherePlace): string {
+  if (place.kind === 'simple') {
+    const tag = place.tag?.trim();
+    return tag ? tag : 'Drop-off';
+  }
+  if (place.kind === 'regular') return 'Center';
+  if (place.kind === 'campaign') return 'Event';
+  return place.kind;
+}
+
+export type OrganizationResult = {
+  id: string;
+  name: string;
+  locationCount: number;
+};
+
+/**
+ * Organisations matching a query, aggregated from the loaded places —
+ * `organizationResults` in client/src/pages/dashboard/where/hooks/useLocationSearch.ts:143-172.
+ *
+ * Derived entirely client-side (no endpoint): each distinct `organizationName`
+ * whose text matches becomes one row, counting how many places it owns.
+ * Returns nothing for an empty query, as web does.
+ */
+export function searchOrganizations(
+  places: WherePlace[],
+  query: string,
+): OrganizationResult[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+
+  const map = new Map<string, OrganizationResult>();
+  for (const place of places) {
+    const name = place.organizationName;
+    if (!name || !name.toLowerCase().includes(q)) continue;
+    const existing = map.get(name);
+    if (existing) existing.locationCount += 1;
+    else map.set(name, { id: name, name, locationCount: 1 });
+  }
+  return Array.from(map.values());
+}
+
+/**
+ * Material types matching a query — web's `materialTypeResults`, a plain
+ * substring filter over the known material chips.
+ */
+export function searchMaterialTypes(
+  materialTypes: string[],
+  query: string,
+): string[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return materialTypes.filter((type) => type.toLowerCase().includes(q));
 }

@@ -127,3 +127,19 @@ export function successShareText(carbonUnits: number): string {
   const cu = carbonUnits.toFixed(2);
   return `Just completed a drop-off and earned ${cu} Carbon Units! Join me in making the world greener with NatCycle! 🌱`;
 }
+
+/**
+ * Colour for a drop-off's status line, from `UserDropOffs.tsx:409-418`:
+ *
+ *   Approved | Verified  → green-600
+ *   Pending             → orange-500
+ *   anything else       → red-500
+ *
+ * The mobile history rows previously showed no status at all, so a rejected
+ * drop-off was indistinguishable from an approved one.
+ */
+export function dropoffStatusColor(status?: string): string {
+  if (status === 'Approved' || status === 'Verified') return '#16a34a';
+  if (status === 'Pending') return '#f97316';
+  return '#ef4444';
+}

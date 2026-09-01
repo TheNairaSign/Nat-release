@@ -27,6 +27,7 @@ import { useQuery } from '@/shared/api';
 import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
 import { ChromeScreen, ScreenBack, Text } from '@/shared/ui';
+import { CloseGlyph } from '@/shared/ui/icons/glyphs';
 
 export function LogDropoffScreen({
   mode,
@@ -165,7 +166,8 @@ export function LogDropoffScreen({
       </Text>
       {step === 1 ? (
         <>
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+          <SectionTitle>What kind of drop-off?</SectionTitle>
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
             {(['simple', 'campaign'] as const).map((id) => (
               <Pressable
                 key={id}
@@ -245,6 +247,51 @@ export function LogDropoffScreen({
       ) : null}
       {step === 2 ? (
         <>
+          <SectionTitle
+            hint={
+              dropoffMode === 'simple'
+                ? 'Search or pick from the list'
+                : 'Includes ended events you can still log'
+            }
+          >
+            {dropoffMode === 'simple' ? 'Choose a location' : 'Choose an event'}
+          </SectionTitle>
+          {dropoffMode === 'campaign' &&
+          !eventsQuery.isPending &&
+          (eventsQuery.data ?? []).length === 0 ? (
+            <View
+              style={{
+                marginTop: 8,
+                padding: 20,
+                borderRadius: theme.radius.lg,
+                backgroundColor: theme.color.surface,
+                alignItems: 'center',
+                gap: 12,
+              }}
+            >
+              <Text variant="small" muted>
+                No events found.
+              </Text>
+              <Pressable
+                testID="log-switch-to-static"
+                onPress={() => {
+                  setDropoffMode('simple');
+                  setStep(1);
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontFamily: theme.font.medium,
+                    color: theme.color.text,
+                    textDecorationLine: 'underline',
+                  }}
+                >
+                  Log a static drop-off instead
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
           {(dropoffMode === 'simple'
             ? (sitesQuery.data ?? [])
             : (eventsQuery.data ?? [])
@@ -293,6 +340,49 @@ export function LogDropoffScreen({
         <>
           {dropoffMode === 'simple' && site ? (
             <>
+              {/* Web confirms the choice with a "Selected location" card that
+                  can be cleared before entering quantities. */}
+              <SectionTitle>Selected location</SectionTitle>
+              <View
+                style={{
+                  marginTop: 8,
+                  padding: 12,
+                  borderRadius: theme.radius.lg,
+                  backgroundColor: theme.color.surface,
+                  borderWidth: 1,
+                  borderColor: theme.color.borderSolid,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={{ fontFamily: theme.font.semibold }}
+                  >
+                    {site.name}
+                  </Text>
+                  {site.address ? (
+                    <Text variant="small" muted numberOfLines={1}>
+                      {site.address}
+                    </Text>
+                  ) : null}
+                </View>
+                <Pressable
+                  testID="log-clear-location"
+                  accessibilityLabel="Remove selected location"
+                  hitSlop={8}
+                  onPress={() => {
+                    setSelectedSite('');
+                    setQuantities({});
+                    setStep(2);
+                  }}
+                >
+                  <CloseGlyph color={theme.color.textMuted} size={18} />
+                </Pressable>
+              </View>
               <MaterialQuantityList
                 lines={lines}
                 quantities={quantities}
@@ -351,5 +441,24 @@ export function LogDropoffScreen({
         <Text style={{ color: theme.color.danger, marginTop: 8 }}>{error}</Text>
       ) : null}
     </ChromeScreen>
+  );
+}
+
+/**
+ * Web's `SectionTitle` from log-dropoff: a bold step heading with an optional
+ * muted hint underneath. The mobile screen had the steps but none of the
+ * headings, so each step arrived with no label.
+ */
+function SectionTitle({ children, hint }: { children: string; hint?: string }) {
+  const theme = useTheme();
+  return (
+    <View style={{ marginTop: 16 }}>
+      <Text style={{ fontFamily: theme.font.semibold }}>{children}</Text>
+      {hint ? (
+        <Text variant="small" muted style={{ marginTop: 2 }}>
+          {hint}
+        </Text>
+      ) : null}
+    </View>
   );
 }

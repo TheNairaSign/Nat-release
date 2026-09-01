@@ -32,6 +32,8 @@ export const en = {
   signInFailed: 'Sign in failed',
   hidePassword: 'Hide password',
   showPassword: 'Show password',
+  invalidResetLink: 'Invalid reset link',
+  invalidOrExpiredResetLink: 'Invalid or expired reset link',
   forgotPasswordTitle: 'Forgot Password',
   forgotPasswordBody:
     "Enter your email address and we'll send you a secure link to reset your password.",

@@ -34,14 +34,17 @@ export function ResetPasswordScreen({ token }: { token: string }) {
   useEffect(() => {
     let cancelled = false;
     if (!token) {
-      navigation.replace('/forgot-password');
+      // Web toasts "Invalid reset link" before redirecting; mobile has no
+      // toast port, so the reason travels to the forgot-password screen and
+      // is shown there in its banner.
+      navigation.replace('/forgot-password?notice=invalidResetLink');
       return;
     }
     void (async () => {
       const result = await verifyResetToken(http, token);
       if (cancelled) return;
       if (!result.valid) {
-        navigation.replace('/forgot-password');
+        navigation.replace('/forgot-password?notice=invalidOrExpiredResetLink');
         return;
       }
       setEmail(result.email);

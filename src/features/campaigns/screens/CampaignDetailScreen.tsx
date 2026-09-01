@@ -85,38 +85,83 @@ export function CampaignDetailScreen({ id }: { id: string }) {
       <Text style={{ fontSize: 22, fontFamily: theme.font.bold, marginTop: 8 }}>
         {item.name}
       </Text>
-      <Text muted style={{ marginTop: 8 }}>
-        {item.description}
+      <Text
+        style={{
+          fontSize: 18,
+          fontFamily: theme.font.semibold,
+          marginTop: 16,
+          marginBottom: 8,
+        }}
+      >
+        About this Campaign
       </Text>
+      <Text style={{ color: '#374151' }}>{item.description}</Text>
       <Text variant="small" muted style={{ marginTop: 8 }}>
         {endsLabel(item.endDate, item.isIndefinite)}
       </Text>
-      <Text style={{ marginTop: 16, fontFamily: theme.font.semibold }}>
-        Campaign Progress
-      </Text>
+      {/* web: "Campaign Progress" and the percentage share one
+          justify-between row above an h-3 bar, with Goal / Current beneath. */}
       <View
         style={{
-          height: 10,
-          backgroundColor: theme.color.band,
-          borderRadius: 6,
-          marginTop: 8,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          marginTop: 16,
+          marginBottom: 8,
+        }}
+      >
+        <Text style={{ fontFamily: theme.font.semibold }}>
+          Campaign Progress
+        </Text>
+        <Text style={{ fontFamily: theme.font.semibold }}>{pct}%</Text>
+      </View>
+      <View
+        style={{
+          height: 12,
+          backgroundColor: '#E5E7EB',
+          borderRadius: theme.radius.pill,
         }}
       >
         <View
           style={{
             width: `${pct}%`,
             height: '100%',
-            backgroundColor: theme.color.accent,
-            borderRadius: 6,
+            backgroundColor: '#16a34a',
+            borderRadius: theme.radius.pill,
           }}
         />
       </View>
-      <Text variant="small" muted style={{ marginTop: 4 }}>
-        {pct}%
-      </Text>
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          marginTop: 12,
+        }}
+      >
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ fontSize: 12, color: theme.color.textMuted }}>
+            Goal
+          </Text>
+          <Text style={{ fontFamily: theme.font.semibold }}>{item.goal}</Text>
+        </View>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ fontSize: 12, color: theme.color.textMuted }}>
+            Current
+          </Text>
+          <Text style={{ fontFamily: theme.font.semibold }}>
+            {item.progress}
+          </Text>
+        </View>
+      </View>
       {item.locations.length > 0 ? (
         <>
-          <Text style={{ marginTop: 16, fontFamily: theme.font.semibold }}>
+          <Text
+            style={{
+              fontSize: 18,
+              fontFamily: theme.font.semibold,
+              marginTop: 24,
+              marginBottom: 8,
+            }}
+          >
             Collection Locations
           </Text>
           {item.locations.map((location, index) => (

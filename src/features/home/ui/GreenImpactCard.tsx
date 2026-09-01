@@ -32,8 +32,12 @@ export function GreenImpactCard({
         pointerEvents="none"
         style={{
           position: 'absolute',
+          // web: `-right-5 -bottom-1/2 -translate-y-1/2`
+          //  → right: -1.25rem; bottom: -50% of the card; then shifted up by
+          //    half the watermark's own height (120 / 2 = 60).
           right: -20,
-          bottom: -60,
+          bottom: '-50%',
+          transform: [{ translateY: -theme.layout.earthWatermark / 2 }],
           width: theme.layout.earthWatermark,
           height: theme.layout.earthWatermark,
         }}

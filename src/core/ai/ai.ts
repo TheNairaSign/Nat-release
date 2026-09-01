@@ -1,3 +1,5 @@
+import type { AiToolCall } from './tools';
+
 export const AI_CAPABILITIES = [
   {
     id: 'recycling',
@@ -25,13 +27,9 @@ export type AiMessage = {
   id: string;
   role: 'user' | 'assistant';
   text: string;
-  tools?: AiTool[];
+  /** Raw tool calls from the service; grouped into buttons at render time. */
+  tools?: AiToolCall[];
   options?: string[];
-};
-
-export type AiTool = {
-  label: string;
-  href: string;
 };
 
 export function greetingName(firstName?: string): string {
@@ -70,59 +68,34 @@ export function parseAiHref(tool?: string): string | null {
   return null;
 }
 
-export function extractAssistantReply(body: unknown): {
-  text: string;
-  tools: AiTool[];
-  options: string[];
-} {
-  if (!body || typeof body !== 'object') {
-    return { text: AI_FALLBACK, tools: [], options: [] };
-  }
-  const root = body as Record<string, unknown>;
-  const data =
-    root.data && typeof root.data === 'object'
-      ? (root.data as Record<string, unknown>)
-      : root;
-  const text =
-    (typeof data.answer === 'string' && data.answer) ||
-    (typeof data.message === 'string' && data.message) ||
-    (typeof data.text === 'string' && data.text) ||
-    (typeof data.response === 'string' && data.response) ||
-    AI_FALLBACK;
-  const tools: AiTool[] = [];
-  const rawTools = Array.isArray(data.tools)
-    ? data.tools
-    : Array.isArray(data.actions)
-      ? data.actions
-      : [];
-  for (const item of rawTools) {
-    if (!item || typeof item !== 'object') continue;
-    const row = item as Record<string, unknown>;
-    const label =
-      typeof row.label === 'string'
-        ? row.label
-        : typeof row.title === 'string'
-          ? row.title
-          : typeof row.name === 'string'
-            ? row.name
-            : undefined;
-    const action = typeof row.action === 'string' ? row.action : label;
-    const href =
-      (typeof row.href === 'string' && row.href) ||
-      (typeof row.path === 'string' && row.path) ||
-      parseAiHref(action);
-    if (label && href) tools.push({ label, href });
-  }
-  const options = Array.isArray(data.options)
-    ? data.options.filter((item): item is string => typeof item === 'string')
-    : Array.isArray(data.clarifications)
-      ? data.clarifications.filter(
-          (item): item is string => typeof item === 'string',
-        )
-      : [];
-  return { text, tools, options };
-}
-
 export function navigationFromPrompt(prompt: string): string | null {
   return parseAiHref(prompt);
+}
+
+export type AiTextLine = {
+  text: string;
+  /** Rendered bold with extra top spacing, per web `formatAiText`. */
+  isTitle: boolean;
+  /** Blank source lines keep their height (web emits ` `). */
+  isBlank: boolean;
+};
+
+/**
+ * Splits an assistant reply into display lines, mirroring `formatAiText` in
+ * client/src/pages/dashboard/ai/AiChat.tsx:714-735.
+ *
+ * A line is a title when it starts "Method <n>", or ends with
+ * "(default option)" / "(only if safe)". Everything else is body text. The
+ * previous mobile chat rendered the whole reply as one flat string, so these
+ * headings and the blank-line spacing were lost.
+ */
+export function formatAiLines(text: string): AiTextLine[] {
+  return text.split('\n').map((line) => {
+    const trimmed = line.trim();
+    const isTitle =
+      /^method\s*\d+/i.test(trimmed) ||
+      trimmed.endsWith('(default option)') ||
+      trimmed.endsWith('(only if safe)');
+    return { text: line, isTitle, isBlank: line.length === 0 };
+  });
 }

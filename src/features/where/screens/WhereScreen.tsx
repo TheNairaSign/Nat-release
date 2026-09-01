@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,11 +9,12 @@ import {
   createDropoffHref,
   directionsUrl,
   filterPlaces,
-  markerColorForPlace,
-  markerShapeForPlace,
   markerSizeForZoom,
+  markerSpecForPlace,
   pickPlaceById,
   recordMaterialType,
+  searchMaterialTypes,
+  searchOrganizations,
   searchPlaces,
   type MapPanelFocus,
   type WhereFilterId,
@@ -67,6 +68,10 @@ export function WhereScreen({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [branchFocus, setBranchFocus] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [picked, setPicked] = useState<WherePlace | null | undefined>(
     undefined,
   );
@@ -140,14 +145,41 @@ export function WhereScreen({
     searchOpen,
     searchQuery,
   ]);
+
+  // Web's useLocationSearch groups organisations and material types above the
+  // location results; both are derived client-side from data already loaded.
+  const orgResults = useMemo(
+    () =>
+      searchOpen
+        ? searchOrganizations(placesQuery.data ?? [], searchQuery)
+        : [],
+    [searchOpen, placesQuery.data, searchQuery],
+  );
+  const materialResults = useMemo(
+    () =>
+      searchOpen ? searchMaterialTypes(chipsQuery.data ?? [], searchQuery) : [],
+    [searchOpen, chipsQuery.data, searchQuery],
+  );
   const eventCount = (placesQuery.data ?? []).filter(
     (place) => place.kind === 'campaign',
   ).length;
-  const camera = useMemo(
-    () =>
-      selected ? { latitude: selected.lat, longitude: selected.lng } : origin,
-    [selected, origin],
-  );
+  // Any change of selected place clears the branch focus, so the camera never
+  // stays parked on a branch of a place the user has moved away from.
+  const pick = useCallback((place: WherePlace | null) => {
+    setPicked(place);
+    setBranchFocus(null);
+  }, []);
+
+  const camera = useMemo(() => {
+    // A branch chosen inside the location sheet wins over the place itself,
+    // matching web's handleSimpleMarkerClick(id, extraLocationIndex).
+    if (branchFocus) {
+      return { latitude: branchFocus.lat, longitude: branchFocus.lng };
+    }
+    return selected
+      ? { latitude: selected.lat, longitude: selected.lng }
+      : origin;
+  }, [branchFocus, selected, origin]);
   const cameraZoom = selected ? 16 : zoom;
 
   async function onRecord(place: WherePlace) {
@@ -202,7 +234,7 @@ export function WhereScreen({
           }))}
           onMarkerPress={(id) => {
             const match = visible.find((place) => place.id === id);
-            if (match) setPicked(match);
+            if (match) pick(match);
           }}
         >
           {(marker) => {
@@ -210,11 +242,10 @@ export function WhereScreen({
             if (!place) return null;
             return (
               <MapMarkerPin
-                color={markerColorForPlace(place)}
-                shape={markerShapeForPlace(place)}
-                size={markerSizeForZoom(cameraZoom, marker.selected)}
-                selected={marker.selected}
-                inactive={place.isActive === false || place.phase === 'ended'}
+                spec={markerSpecForPlace(place, {
+                  size: markerSizeForZoom(cameraZoom, marker.selected),
+                  isHighlighted: marker.selected,
+                })}
               />
             );
           }}
@@ -232,16 +263,17 @@ export function WhereScreen({
           <MapTopPanel
             focus={panelFocus}
             organization={orgFilter}
+            origin={origin}
             onFocus={(next) => {
               setFocus(next);
-              setPicked(null);
+              pick(null);
             }}
             chips={chipsQuery.data ?? []}
             chipsLoading={chipsQuery.isPending}
             selectedMaterial={selectedMaterial}
             onSelectMaterial={(material) => {
               setMaterialOverride(material);
-              setPicked(null);
+              pick(null);
               if (material) setPlatform('all');
             }}
             searchOpen={searchOpen}
@@ -257,8 +289,16 @@ export function WhereScreen({
             searchQuery={searchQuery}
             onSearchQuery={setSearchQuery}
             searchResults={visible}
+            searchOrganizations={orgResults}
+            onSelectOrganization={(name) => {
+              setOrgOverride(name);
+              pick(null);
+              setSearchOpen(false);
+              setSearchQuery('');
+            }}
+            searchMaterialTypes={materialResults}
             onSelectPlace={(place) => {
-              setPicked(place);
+              pick(place);
               setSearchOpen(false);
             }}
             filterOpen={filterOpen}
@@ -280,7 +320,8 @@ export function WhereScreen({
             <LocationSheet
               place={selected}
               reminderPending={reminderPending}
-              onClose={() => setPicked(null)}
+              onClose={() => pick(null)}
+              onFocusBranch={setBranchFocus}
               onRecord={() => {
                 void onRecord(selected);
               }}
@@ -301,14 +342,14 @@ export function WhereScreen({
             setPlatform(id);
             if (id === 'mobile') {
               setFocus('events');
-              setPicked(null);
+              pick(null);
             } else {
               setFocus('points');
             }
           }}
           onSelectOrganization={(name) => {
             setOrgOverride(name);
-            setPicked(null);
+            pick(null);
           }}
         />
       </View>

@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 
 import {
   formatDropoffWhen,
+  dropoffStatusColor,
   inMonth,
   isFutureMonth,
   kindBadge,
@@ -128,6 +129,19 @@ export function HistoryScreen() {
             <Text variant="small">
               {item.quantity} {item.materialType ?? 'items'}
             </Text>
+            {item.status ? (
+              // web: `text-xs mt-2 font-medium`, colour by status
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontFamily: theme.font.medium,
+                  marginTop: 8,
+                  color: dropoffStatusColor(item.status),
+                }}
+              >
+                Status: {item.status}
+              </Text>
+            ) : null}
             <View
               style={{
                 flexDirection: 'row',

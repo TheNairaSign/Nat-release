@@ -14,23 +14,23 @@ import {
   profileUserQueryKey,
   updateProfilePhoto,
 } from '../api/profile-api';
+import { CameraGlyph } from '@/shared/ui/icons/featherGlyphs';
 import { useSession } from '@/features/auth';
 import { useQuery } from '@/shared/api';
 import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
 import { ChromeScreen, Text, ThingsMatchMark } from '@/shared/ui';
+import { BellGlyph, ChevronGlyph } from '@/shared/ui/icons/glyphs';
 import {
-  BellGlyph,
-  BookmarkGlyph,
   BoltGlyph,
+  BookmarkGlyph,
   BullhornGlyph,
-  ChartGlyph,
-  ChevronGlyph,
+  ChartPieGlyph,
   CogGlyph,
   GiftGlyph,
-  SearchTargetGlyph,
+  LocationSearchingGlyph,
   SignOutGlyph,
-} from '@/shared/ui/icons/glyphs';
+} from '@/shared/ui/icons/uiGlyphs';
 
 function ActivityIcon({
   icon,
@@ -40,6 +40,8 @@ function ActivityIcon({
   color: string;
 }) {
   switch (icon) {
+    // Sizes from Profile.tsx: FaGift 18, FaBolt 18, FaBullhorn 18,
+    // MdOutlineLocationSearching 20.
     case 'gift':
       return <GiftGlyph color={color} size={18} />;
     case 'bolt':
@@ -47,7 +49,7 @@ function ActivityIcon({
     case 'bullhorn':
       return <BullhornGlyph color={color} size={18} />;
     default:
-      return <SearchTargetGlyph color={color} size={20} />;
+      return <LocationSearchingGlyph color={color} size={20} />;
   }
 }
 
@@ -93,6 +95,25 @@ export function ProfileScreen() {
               borderColor: 'rgba(0,0,0,0.06)',
             }}
           />
+          {/* web: `absolute bottom-1 right-1 w-9 h-9 rounded-full bg-[#111111]
+              text-white border-2 border-white` with FiCamera at 16 */}
+          <View
+            style={{
+              position: 'absolute',
+              bottom: 4,
+              right: 4,
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: '#111111',
+              borderWidth: 2,
+              borderColor: '#ffffff',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <CameraGlyph color="#ffffff" size={16} />
+          </View>
         </Pressable>
         <Text
           style={{
@@ -122,7 +143,8 @@ export function ProfileScreen() {
           <BookmarkGlyph color="#B8E83A" size={22} />
           <Text
             style={{
-              fontSize: 22,
+              fontSize: 24,
+              lineHeight: 24,
               fontFamily: theme.font.bold,
               marginTop: 12,
               color: '#111111',
@@ -144,10 +166,11 @@ export function ProfileScreen() {
             borderColor: 'rgba(0,0,0,0.04)',
           }}
         >
-          <ChartGlyph color="#B8E83A" size={22} />
+          <ChartPieGlyph color="#B8E83A" size={22} />
           <Text
             style={{
-              fontSize: 22,
+              fontSize: 24,
+              lineHeight: 24,
               fontFamily: theme.font.bold,
               marginTop: 12,
               color: '#111111',

@@ -5,17 +5,15 @@ import {
   DMSans_700Bold,
   useFonts,
 } from '@expo-google-fonts/dm-sans';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
 
 import { AppProviders } from '@/providers/AppProviders';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   const [fontsLoaded] = useFonts({
     DMSans_400Regular,
     DMSans_500Medium,
@@ -34,7 +32,7 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={DefaultTheme}>
       <AppProviders>
         <Stack screenOptions={{ headerShown: false }} />
       </AppProviders>

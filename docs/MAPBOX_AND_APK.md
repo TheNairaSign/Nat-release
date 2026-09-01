@@ -11,7 +11,7 @@ Where and Impact Action Map use `@rnmapbox/maps` with style `mapbox://styles/map
 
 Already in the app:
 
-- Plugin in `app.config.ts`: `@rnmapbox/maps` with `RNMapboxMapsVersion: "11.16.2"`
+- Plugin in `app.config.ts`: `@rnmapbox/maps` with `RNMapboxMapsVersion: "11.23.1"`
 - Runtime: `WhereMap` calls `Mapbox.setAccessToken(getEnv().mapboxToken)`
 - Location permission strings / Android `ACCESS_FINE_LOCATION`
 
@@ -20,23 +20,14 @@ Already in the app:
 ### Wire the download token for native builds
 
 1. Create secret token with Downloads:Read on Mapbox.
-2. Store it as an EAS secret (do not commit):
+2. Store it as an EAS env var for the `preview` environment (do not commit):
 
 ```bash
 cd natcycle/app/mobile
-npx eas-cli@latest secret:create --name RNMAPBOX_MAPS_DOWNLOAD_TOKEN --value "sk.YOUR_SECRET" --type string
+npx eas-cli@latest env:create --name RNMAPBOX_MAPS_DOWNLOAD_TOKEN --value "sk.YOUR_SECRET" --environment preview --visibility secret --force
 ```
 
-3. Point the config plugin at it (optional if you set the env var in the build profile). Preferred in `app.config.ts`:
-
-```ts
-["@rnmapbox/maps", {
-  RNMapboxMapsVersion: "11.16.2",
-  RNMapboxMapsDownloadToken: process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN,
-}]
-```
-
-4. Keep the public `pk.` token as `EXPO_PUBLIC_MAPBOX_TOKEN` (local `.env` already has one for JS).
+Gradle picks it up from `RNMAPBOX_MAPS_DOWNLOAD_TOKEN` (Mapbox Android downloads often work without it now; keep it for iOS / older tooling).
 
 ### Also set these EAS secrets for a working APK
 

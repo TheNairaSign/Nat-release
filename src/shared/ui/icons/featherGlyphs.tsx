@@ -1,0 +1,131 @@
+import Svg, { Circle, Line, Path, Polyline, Rect } from 'react-native-svg';
+
+/**
+ * Feather icons used by the AI landing capability tiles, transcribed from
+ * `react-icons/fi` (the exact geometry the web client renders).
+ *
+ * Feather is stroke-based, not filled — every shape uses `stroke` with
+ * width 2, round caps and round joins, and no fill.
+ */
+export type FeatherGlyphProps = {
+  color: string;
+  size: number;
+};
+
+const stroke = {
+  strokeWidth: 2,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+  fill: 'none',
+};
+
+export function MapPinGlyph({ color, size }: FeatherGlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"
+        stroke={color}
+        {...stroke}
+      />
+      <Circle cx="12" cy="10" r="3" stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
+export function CalendarGlyph({ color, size }: FeatherGlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Rect
+        x="3"
+        y="4"
+        width="18"
+        height="18"
+        rx="2"
+        ry="2"
+        stroke={color}
+        {...stroke}
+      />
+      <Line x1="16" y1="2" x2="16" y2="6" stroke={color} {...stroke} />
+      <Line x1="8" y1="2" x2="8" y2="6" stroke={color} {...stroke} />
+      <Line x1="3" y1="10" x2="21" y2="10" stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
+export function TrendingUpGlyph({ color, size }: FeatherGlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Polyline
+        points="23 6 13.5 15.5 8.5 10.5 1 18"
+        stroke={color}
+        {...stroke}
+      />
+      <Polyline points="17 6 23 6 23 12" stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
+/**
+ * lucide-react `MoreVertical` (aliased to `EllipsisVertical`): three r=1
+ * circles at cy 5 / 12 / 19 on a 24×24 box, stroked at width 2. Used for the
+ * AI chat options button.
+ */
+export function MoreVerticalGlyph({ color, size }: FeatherGlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx="12" cy="5" r="1" stroke={color} {...stroke} />
+      <Circle cx="12" cy="12" r="1" stroke={color} {...stroke} />
+      <Circle cx="12" cy="19" r="1" stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
+/** Feather `FiPackage` — the Materials row icon in the Where search panel. */
+export function PackageGlyph({ color, size }: FeatherGlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Line x1="16.5" y1="9.4" x2="7.5" y2="4.21" stroke={color} {...stroke} />
+      <Path
+        d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+        stroke={color}
+        {...stroke}
+      />
+      <Polyline
+        points="3.27 6.96 12 12.01 20.73 6.96"
+        stroke={color}
+        {...stroke}
+      />
+      <Line x1="12" y1="22.08" x2="12" y2="12" stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
+/**
+ * Heroicons `HiOfficeBuilding` — the Organizations row icon. Unlike the
+ * Feather set this one is filled, on a 20x20 box, and needs evenodd fill.
+ */
+export function BuildingGlyph({ color, size }: FeatherGlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 20 20">
+      <Path
+        fillRule="evenodd"
+        d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z"
+        fill={color}
+      />
+    </Svg>
+  );
+}
+
+/** Feather `FiCamera` — the change-photo control on the profile avatar. */
+export function CameraGlyph({ color, size }: FeatherGlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+        stroke={color}
+        {...stroke}
+      />
+      <Circle cx="12" cy="13" r="4" stroke={color} {...stroke} />
+    </Svg>
+  );
+}

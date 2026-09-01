@@ -171,20 +171,34 @@ export function CreateDropoffScreen({
 
   return (
     <ChromeScreen>
-      <ScreenBack onPress={() => navigation.navigate('/home')} />
-      <Pressable
-        testID="log-previous"
-        onPress={() => navigation.navigate('/log-dropoff')}
+      {/* web DropoffHeader: `flex items-center justify-between mb-4` — Back on
+          the left, "Log previous drop-off" on the right of the SAME row, both
+          `text-sm text-slate-600 font-medium` (no underline). */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 16,
+        }}
       >
-        <Text
-          style={{
-            fontFamily: theme.font.semibold,
-            textDecorationLine: 'underline',
-          }}
+        <ScreenBack onPress={() => navigation.navigate('/home')} />
+        <Pressable
+          testID="log-previous"
+          onPress={() => navigation.navigate('/log-dropoff')}
+          hitSlop={8}
         >
-          Log previous drop-off
-        </Text>
-      </Pressable>
+          <Text
+            style={{
+              fontSize: 14,
+              fontFamily: theme.font.medium,
+              color: '#475569',
+            }}
+          >
+            Log previous drop-off
+          </Text>
+        </Pressable>
+      </View>
       <View
         style={{
           flexDirection: 'row',
@@ -209,7 +223,7 @@ export function CreateDropoffScreen({
                 paddingVertical: 6,
                 paddingHorizontal: 12,
                 borderRadius: 6,
-                backgroundColor: active ? '#1e2937' : 'transparent',
+                backgroundColor: active ? '#1e293b' : 'transparent',
                 alignItems: 'center',
               }}
             >
@@ -250,7 +264,7 @@ export function CreateDropoffScreen({
             void load();
           }}
           style={{
-            backgroundColor: '#1e2937',
+            backgroundColor: '#1e293b',
             borderRadius: theme.radius.pill,
             paddingHorizontal: 16,
             paddingVertical: 8,
@@ -526,7 +540,7 @@ export function CreateDropoffScreen({
             style={{
               marginTop: 16,
               fontFamily: theme.font.semibold,
-              color: '#1e2937',
+              color: '#1e293b',
             }}
           >
             Verification picture
@@ -541,6 +555,17 @@ export function CreateDropoffScreen({
           >
             Take or upload a photo as proof.
           </Text>
+          {photo ? (
+            <Text
+              style={{
+                fontSize: 12,
+                color: '#475569',
+                marginTop: 4,
+              }}
+            >
+              Photo added. Retake or upload another.
+            </Text>
+          ) : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <Pressable
               testID="take-photo"
@@ -600,7 +625,7 @@ export function CreateDropoffScreen({
             }}
             style={{
               marginTop: 20,
-              backgroundColor: '#1e2937',
+              backgroundColor: '#1e293b',
               borderRadius: theme.radius.pill,
               paddingVertical: 16,
               alignItems: 'center',

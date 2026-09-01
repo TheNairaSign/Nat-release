@@ -1,4 +1,4 @@
-import { extractAssistantReply, type AiMessage } from '@/core/ai';
+import { parseAiResponse, type AiMessage, type AiToolCall } from '@/core/ai';
 import { getEnv } from '@/shared/config/env';
 import { unwrapList } from '@/shared/api/unwrap';
 import type { HttpClient } from '@/shared/ports/http';
@@ -54,11 +54,41 @@ export async function fetchChatHistory(http: HttpClient): Promise<AiMessage[]> {
           : 'assistant';
     const role =
       roleRaw === 'user' || roleRaw === 'human' ? 'user' : 'assistant';
+    // Web restores tools/options from history (AiChat.tsx:263-273) so the
+    // Continue buttons survive a reload. Mobile dropped them, which meant no
+    // action buttons ever appeared on a restored thread.
+    const tools = Array.isArray(row.tools)
+      ? row.tools.flatMap((item) => {
+          if (!item || typeof item !== 'object') return [];
+          const tool = item as Record<string, unknown>;
+          if (typeof tool.name !== 'string') return [];
+          return [
+            {
+              name: tool.name,
+              parameters:
+                tool.parameters && typeof tool.parameters === 'object'
+                  ? (tool.parameters as Record<string, unknown>)
+                  : {},
+              description:
+                typeof tool.description === 'string'
+                  ? tool.description
+                  : undefined,
+            },
+          ];
+        })
+      : undefined;
+
+    const options = Array.isArray(row.options)
+      ? row.options.filter((o): o is string => typeof o === 'string')
+      : undefined;
+
     return [
       {
         id: typeof row._id === 'string' ? row._id : `hist-${index}`,
         role,
         text,
+        ...(tools && tools.length > 0 ? { tools } : {}),
+        ...(options && options.length > 0 ? { options } : {}),
       },
     ];
   });
@@ -75,7 +105,7 @@ export async function askAi(
   },
 ): Promise<{
   text: string;
-  tools: { label: string; href: string }[];
+  tools: AiToolCall[];
   options: string[];
 }> {
   const env = getEnv();
@@ -107,15 +137,47 @@ export async function askAi(
       },
     },
   });
-  if (response.status >= 300) return extractAssistantReply(null);
-  return extractAssistantReply(response.body);
+  // The AI service answers `{ type, data, metadata }` with `{ name, parameters }`
+  // tools — see core/ai/tools.ts. The old extractAssistantReply expected
+  // `{ label, href }` and produced no tools at all.
+  if (response.status >= 300) return parseAiResponse(null);
+  return parseAiResponse(response.body);
 }
 
+/**
+ * Saves one message to the user's chat history.
+ *
+ * The backend (`server/src/models/chatModel.js`) stores a full subdocument —
+ * `{ id, text, sender, timestamp, tools, ... }` with `id`, `text` and `sender`
+ * all **required**. Mobile previously posted `{ message: '<raw string>' }`,
+ * which mongoose rejected outright, so nothing mobile said or received was
+ * ever persisted. Web saves both sides (AiChat.tsx:538 and :610), which is why
+ * only web-created history existed.
+ *
+ * `sender` is the backend's enum ('user' | 'ai'), not our internal role name.
+ */
 export async function persistChatMessage(
   http: HttpClient,
-  message: string,
+  message: AiMessage,
 ): Promise<void> {
-  await http.request({ path: '/chat', method: 'POST', body: { message } });
+  await http.request({
+    path: '/chat',
+    method: 'POST',
+    body: {
+      message: {
+        id: message.id,
+        text: message.text,
+        sender: message.role === 'user' ? 'user' : 'ai',
+        timestamp: new Date().toISOString(),
+        ...(message.tools && message.tools.length > 0
+          ? { tools: message.tools }
+          : {}),
+        ...(message.options && message.options.length > 0
+          ? { options: message.options }
+          : {}),
+      },
+    },
+  });
 }
 
 export async function clearChatHistory(

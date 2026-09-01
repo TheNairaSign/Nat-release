@@ -3,13 +3,33 @@ import { useState } from 'react';
 
 import type { WherePlace } from '@/core/where';
 import { useTheme } from '@/shared/theme';
-import { CloseGlyph } from '@/shared/ui/icons/glyphs';
+import { ChevronGlyph, CloseGlyph } from '@/shared/ui/icons/glyphs';
 import { Text } from '@/shared/ui/Text';
 
+/** Transcribed from PHASE_UI in
+ *  client/src/pages/dashboard/where/components/CampaignDetailsCard.tsx */
 const PHASE_CARD = {
-  live: { bg: '#E8F9E4', label: 'Diversion event' },
-  upcoming: { bg: '#FFF9E8', label: 'Upcoming event' },
-  ended: { bg: '#F3F4F6', label: 'Ended event' },
+  live: {
+    bg: '#E8F9E4',
+    label: 'Diversion event',
+    badgeBg: '#059669', // emerald-600
+    badgeText: '#FFFFFF',
+    titleColor: '#065F46', // emerald-800
+  },
+  upcoming: {
+    bg: '#FFF9E8',
+    label: 'Upcoming event',
+    badgeBg: '#F5D74D',
+    badgeText: '#1A1A1A',
+    titleColor: '#8A6E0F',
+  },
+  ended: {
+    bg: '#F3F4F6',
+    label: 'Ended event',
+    badgeBg: '#6B7280', // gray-500
+    badgeText: '#FFFFFF',
+    titleColor: '#6B7280',
+  },
 } as const;
 
 export function LocationSheet({
@@ -19,6 +39,7 @@ export function LocationSheet({
   onRecord,
   onDirections,
   onReminder,
+  onFocusBranch,
 }: {
   place: WherePlace;
   reminderPending?: boolean;
@@ -26,9 +47,30 @@ export function LocationSheet({
   onRecord: () => void;
   onDirections: () => void;
   onReminder?: () => void;
+  /** Re-centres the map on the chosen branch, as `handleSimpleMarkerClick`
+   *  does on web. Null selects the main location. */
+  onFocusBranch?: (coords: { lat: number; lng: number } | null) => void;
 }) {
   const theme = useTheme();
   const [descOpen, setDescOpen] = useState(false);
+  // Web keeps `selectedExtraLocationIndex` alongside the selected location and
+  // swaps the sheet's detail fields to that branch. Mobile listed branches as
+  // flat muted text with no selection at all.
+  const [branchesOpen, setBranchesOpen] = useState(false);
+  const [branchIndex, setBranchIndex] = useState<number | null>(null);
+  const branches = place.extraLocations ?? [];
+  const activeBranch = branchIndex === null ? null : branches[branchIndex];
+
+  const selectBranch = (index: number | null) => {
+    setBranchIndex(index);
+    const target = index === null ? null : branches[index];
+    onFocusBranch?.(target ? { lat: target.lat, lng: target.lng } : null);
+  };
+
+  // Fields follow the selected branch, falling back to the main location.
+  const shownAddress = activeBranch?.address ?? place.address;
+  const shownPhone = activeBranch?.contactNumber ?? place.contactNumber;
+
   const campaign = place.kind === 'campaign';
   const simple = place.kind === 'simple';
   const phase = place.phase ?? 'live';
@@ -44,6 +86,15 @@ export function LocationSheet({
       ? description
       : `${description.slice(0, 140).trimEnd()}…`;
   const images = place.images ?? [];
+  // Campaign sheets already show a full-bleed header image, so the thumbnail
+  // strip is for the non-campaign sheets only.
+  //
+  // Web prefers the selected branch's own images over the parent location's.
+  const thumbnails: string[] = campaign
+    ? []
+    : activeBranch?.images?.length
+      ? activeBranch.images
+      : images;
   const cardBg = campaign ? phaseUi.bg : theme.color.surface;
 
   return (
@@ -60,10 +111,56 @@ export function LocationSheet({
       }}
     >
       {campaign && images[0] ? (
-        <Image
-          source={{ uri: images[0] }}
-          style={{ width: '100%', height: 144 }}
-        />
+        // web: h-36 image, a from-black/45 top-fading scrim, and the phase
+        // badge pinned bottom-left over it. Ended events are dimmed.
+        <View
+          style={{
+            height: 144,
+            width: '100%',
+            backgroundColor: '#F5E6CC',
+            opacity: phase === 'ended' ? 0.8 : 1,
+          }}
+        >
+          <Image
+            source={{ uri: images[0] }}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+          />
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 72,
+              backgroundColor: 'rgba(0,0,0,0.28)',
+            }}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              bottom: 12,
+              left: 12,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: theme.radius.pill,
+              backgroundColor: phaseUi.badgeBg,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 10,
+                fontFamily: theme.font.bold,
+                textTransform: 'uppercase',
+                letterSpacing: 0.6,
+                color: phaseUi.badgeText,
+              }}
+            >
+              {phaseUi.label}
+            </Text>
+          </View>
+        </View>
       ) : null}
       <View
         style={{
@@ -76,14 +173,15 @@ export function LocationSheet({
         }}
       >
         <View style={{ flex: 1 }}>
-          {campaign ? (
+          {campaign && !images[0] ? (
             <Text
               style={{
                 fontSize: 10,
                 fontFamily: theme.font.bold,
                 textTransform: 'uppercase',
+                letterSpacing: 0.6,
                 marginBottom: 4,
-                color: theme.color.label,
+                color: phaseUi.titleColor,
               }}
             >
               {phaseUi.label}
@@ -91,9 +189,16 @@ export function LocationSheet({
           ) : null}
           <Text
             style={{
-              fontSize: simple || campaign ? 20 : 18,
+              // Web splits this across two components: the simple/regular
+              // sheet uses text-[1.35rem] (~22px) and CampaignDetailsCard uses
+              // text-base (16px) with leading-snug.
+              fontSize: campaign ? 16 : 22,
+              lineHeight: campaign ? 22 : 26,
               fontFamily: theme.font.bold,
-              color: theme.color.text,
+              letterSpacing: campaign ? 0 : -0.3,
+              // Ended campaigns drop to text-gray-600.
+              color:
+                campaign && phase === 'ended' ? '#4B5563' : theme.color.text,
             }}
             numberOfLines={2}
           >
@@ -113,16 +218,16 @@ export function LocationSheet({
                   paddingHorizontal: 8,
                   paddingVertical: 2,
                   borderRadius: theme.radius.pill,
-                  backgroundColor: 'rgba(255,255,255,0.7)',
+                  backgroundColor: '#F1F5F9',
                   borderWidth: 1,
-                  borderColor: theme.color.legacyBorder,
+                  borderColor: 'rgba(226,232,240,0.8)',
                 }}
               >
                 <Text
                   style={{
                     fontSize: 11,
                     fontFamily: theme.font.semibold,
-                    color: theme.color.label,
+                    color: '#334155',
                   }}
                 >
                   {place.tag}
@@ -196,6 +301,51 @@ export function LocationSheet({
             ))}
           </View>
         ) : null}
+        {/* Web shows up to three 48px thumbnails with a "+N" overflow tile
+            (branch images take precedence over the location's own). */}
+        {thumbnails.length > 0 ? (
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {thumbnails.slice(0, 3).map((uri, index) => (
+              <Image
+                key={`${uri}-${index}`}
+                source={{ uri }}
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: theme.radius.lg,
+                  borderWidth: 1,
+                  borderColor: 'rgba(0,0,0,0.05)',
+                }}
+                resizeMode="cover"
+              />
+            ))}
+            {thumbnails.length > 3 ? (
+              <View
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: theme.radius.lg,
+                  backgroundColor: '#F1F5F9',
+                  borderWidth: 1,
+                  borderColor: 'rgba(0,0,0,0.05)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontFamily: theme.font.semibold,
+                    color: '#475569',
+                  }}
+                >
+                  +{thumbnails.length - 3}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
         {campaign && place.schedule ? (
           <Text variant="small" muted>
             {place.schedule}
@@ -232,14 +382,14 @@ export function LocationSheet({
             Accepted: {(place.acceptedSubtypes ?? []).slice(0, 5).join(', ')}
           </Text>
         ) : null}
-        {place.address ? (
+        {shownAddress ? (
           <Text variant="small" muted>
-            {place.address}
+            {shownAddress}
           </Text>
         ) : null}
-        {place.contactNumber ? (
+        {shownPhone ? (
           <Text variant="small" muted>
-            {place.contactNumber}
+            {shownPhone}
           </Text>
         ) : null}
         {place.whoCanDropOff ? (
@@ -257,12 +407,52 @@ export function LocationSheet({
             {place.paymentNote}
           </Text>
         ) : null}
-        {(place.extraLocations ?? []).map((branch) => (
-          <Text key={`${branch.name}-${branch.lat}`} variant="small" muted>
-            {branch.name}
-            {branch.address ? ` · ${branch.address}` : ''}
-          </Text>
-        ))}
+        {branches.length > 0 ? (
+          <View>
+            <Pressable
+              testID="where-branches-toggle"
+              onPress={() => setBranchesOpen((open) => !open)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              <Text style={{ fontSize: 13, fontFamily: theme.font.semibold }}>
+                Branches ({branches.length + 1})
+              </Text>
+              <ChevronGlyph
+                color={theme.color.textMuted}
+                size={14}
+                direction={branchesOpen ? 'up' : 'down'}
+              />
+            </Pressable>
+
+            {branchesOpen ? (
+              <View style={{ marginTop: 8, gap: 4 }}>
+                <BranchRow
+                  name={place.name}
+                  address={place.address}
+                  selected={branchIndex === null}
+                  inactive={place.isActive === false}
+                  onPress={() => selectBranch(null)}
+                />
+                {branches.map((extra, index) => (
+                  <BranchRow
+                    key={`branch-${index}`}
+                    name={extra.name || `Branch ${index + 2}`}
+                    address={
+                      [extra.address, extra.contactNumber]
+                        .filter(Boolean)
+                        .join(' · ') || undefined
+                    }
+                    selected={branchIndex === index}
+                    inactive={
+                      place.isActive === false || extra.isActive === false
+                    }
+                    onPress={() => selectBranch(index)}
+                  />
+                ))}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
       </ScrollView>
 
       <View
@@ -357,5 +547,74 @@ export function LocationSheet({
         </Pressable>
       </View>
     </View>
+  );
+}
+
+/**
+ * One row in the branches list. Web styles the selected row
+ * `bg-[#D1FF52]/45 border-[#B8E83A]`, an unavailable branch greyed with an
+ * "Unavailable" tag, and everything else on `bg-slate-50`.
+ */
+function BranchRow({
+  name,
+  address,
+  selected,
+  inactive,
+  onPress,
+}: {
+  name: string;
+  address?: string;
+  selected: boolean;
+  inactive: boolean;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: theme.radius.xl,
+        borderWidth: 1,
+        backgroundColor: selected
+          ? 'rgba(209,255,82,0.45)'
+          : inactive
+            ? '#F1F5F9'
+            : '#F8FAFC',
+        borderColor: selected ? '#B8E83A' : 'transparent',
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Text
+          numberOfLines={1}
+          style={{
+            flexShrink: 1,
+            fontSize: 12,
+            fontFamily: theme.font.semibold,
+            color:
+              inactive && !selected
+                ? theme.color.placeholder
+                : theme.color.text,
+          }}
+        >
+          {name}
+        </Text>
+        {inactive ? (
+          <Text style={{ fontSize: 10, color: theme.color.placeholder }}>
+            Unavailable
+          </Text>
+        ) : null}
+      </View>
+      {address ? (
+        <Text
+          numberOfLines={1}
+          style={{ fontSize: 11, color: theme.color.textMuted }}
+        >
+          {address}
+        </Text>
+      ) : null}
+    </Pressable>
   );
 }

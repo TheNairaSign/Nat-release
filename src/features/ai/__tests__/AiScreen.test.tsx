@@ -19,9 +19,10 @@ function httpForAi() {
         return {
           status: 200,
           body: {
+            type: 'AGENTIC',
             data: {
               answer: 'Open the Where tab.',
-              tools: [{ label: 'Open Where', href: '/where' }],
+              tools: [{ name: 'navigateTo', parameters: { route: '/where' } }],
             },
           },
         };
@@ -48,7 +49,9 @@ describe('AiScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Open the Where tab.')).toBeTruthy();
     });
-    await fireEvent.press(screen.getByTestId('ai-tool-/where'));
+    // Tools are grouped into actions, so the testID is the group id and the
+    // label comes from getContinueLabel — "/where" maps to "Find nearby".
+    await fireEvent.press(screen.getByTestId('ai-tool-find_where'));
     expect(navigate).toHaveBeenCalledWith('/where');
   });
 });
