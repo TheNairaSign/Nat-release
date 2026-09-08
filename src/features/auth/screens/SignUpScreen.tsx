@@ -140,6 +140,15 @@ export function SignUpScreen({ query = {} }: { query?: SignUpQuery }) {
           />
           <AuthHairline />
           <AuthTextField
+            testID="sign-up-city"
+            placeholder="Town / City *"
+            autoComplete="postal-address"
+            textContentType="addressCity"
+            value={form.fields.city}
+            onChangeText={(value) => form.change('city', value)}
+          />
+          <AuthHairline />
+          <AuthTextField
             testID="sign-up-age"
             placeholder={t('agePlaceholder')}
             keyboardType="number-pad"
@@ -156,7 +165,12 @@ export function SignUpScreen({ query = {} }: { query?: SignUpQuery }) {
           />
         </AuthFieldCard>
         <AuthFieldError
-          message={groupedSignupError(form.errors, ['email', 'age', 'gender'])}
+          message={groupedSignupError(form.errors, [
+            'email',
+            'city',
+            'age',
+            'gender',
+          ])}
         />
 
         <AuthFieldCard elevated>

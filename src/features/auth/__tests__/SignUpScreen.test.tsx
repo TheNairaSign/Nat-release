@@ -13,6 +13,7 @@ async function fillValidSignup() {
     screen.getByTestId('sign-up-email'),
     'ada@natcycle.app',
   );
+  await fireEvent.changeText(screen.getByTestId('sign-up-city'), 'Hamden');
   await fireEvent.changeText(screen.getByTestId('sign-up-age'), '28');
   await fireEvent.press(screen.getByTestId('sign-up-gender'));
   await fireEvent.press(screen.getByTestId('sign-up-gender-female'));
@@ -65,6 +66,7 @@ describe('SignUpScreen', () => {
       body: expect.objectContaining({
         email: 'ada@natcycle.app',
         firstName: 'Ada',
+        city: 'Hamden',
         gender: 'female',
         referralId: '',
       }),

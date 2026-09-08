@@ -11,6 +11,7 @@ export type ProfileUser = {
   carbonUnits: number;
   createdAt?: string;
   phoneNumber?: string;
+  city?: string;
   impactMeasurement?: string;
   itemsCount: Record<string, number>;
   isEmailVerified?: boolean;
@@ -44,6 +45,7 @@ function asUser(raw: Record<string, unknown> | null): ProfileUser | null {
     createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : undefined,
     phoneNumber:
       typeof raw.phoneNumber === 'string' ? raw.phoneNumber : undefined,
+    city: typeof raw.city === 'string' ? raw.city : undefined,
     impactMeasurement:
       typeof raw.impactMeasurement === 'string'
         ? raw.impactMeasurement
@@ -75,6 +77,7 @@ export async function updateProfileUser(
     email: string;
     impactMeasurement: string;
     phoneNumber: string;
+    city: string;
   },
 ): Promise<ProfileUser | null> {
   const response = await http.request({

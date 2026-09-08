@@ -13,6 +13,7 @@ const valid = {
   firstName: 'Ada',
   lastName: 'Lovelace',
   email: 'ada@natcycle.app',
+  city: 'Hamden',
   password: 'Secret1x',
   confirmPassword: 'Secret1x',
   age: '28',
@@ -62,6 +63,15 @@ describe('validateSignupField', () => {
       'Age must be a number',
     );
     expect(validateSignupField('gender', '', valid)).toBe('Gender is required');
+  });
+
+  it('requires town / city', () => {
+    expect(validateSignupField('city', '', valid)).toBe(
+      'Town / city is required',
+    );
+    expect(validateSignupField('city', 'H', valid)).toBe(
+      'Enter a valid town or city',
+    );
   });
 });
 

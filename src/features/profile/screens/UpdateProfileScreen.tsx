@@ -39,6 +39,7 @@ function UpdateProfileForm({
     email: string;
     impactMeasurement?: string;
     phoneNumber?: string;
+    city?: string;
   };
 }) {
   const theme = useTheme();
@@ -50,6 +51,7 @@ function UpdateProfileForm({
     user.impactMeasurement || 'trees',
   );
   const [phoneNumber, setPhoneNumber] = useState(user.phoneNumber || '');
+  const [city, setCity] = useState(user.city || '');
   const [saved, setSaved] = useState(false);
 
   async function onSave() {
@@ -59,6 +61,7 @@ function UpdateProfileForm({
       email,
       impactMeasurement,
       phoneNumber,
+      city,
     });
     if (next) setSaved(true);
   }
@@ -106,6 +109,14 @@ function UpdateProfileForm({
           </Pressable>
         ))}
       </View>
+      <Field
+        label="Town / City"
+        value={city}
+        onChange={setCity}
+      />
+      <Text variant="small" muted>
+        Where do you live?
+      </Text>
       <Field
         label="Phone Number"
         value={phoneNumber}

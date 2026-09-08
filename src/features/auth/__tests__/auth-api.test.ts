@@ -79,6 +79,7 @@ describe('signUp', () => {
         confirmPassword: 'Secret1x',
         age: '28',
         gender: 'female',
+        city: 'Hamden',
         referralId: '',
       }),
     ).resolves.toEqual({ token: 'jwt-1', userId: 'user-1' });

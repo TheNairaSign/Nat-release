@@ -4,6 +4,7 @@ export type SignupFields = {
   firstName: string;
   lastName: string;
   email: string;
+  city: string;
   password: string;
   confirmPassword: string;
   age: string;
@@ -17,6 +18,7 @@ export const emptySignupFields: SignupFields = {
   firstName: '',
   lastName: '',
   email: '',
+  city: '',
   password: '',
   confirmPassword: '',
   age: '',
@@ -27,6 +29,7 @@ export const emptySignupErrors: SignupErrors = {
   firstName: '',
   lastName: '',
   email: '',
+  city: '',
   password: '',
   confirmPassword: '',
   age: '',
@@ -62,6 +65,10 @@ export function validateSignupField(
       if (!EMAIL_PATTERN.test(value))
         return 'Please enter a valid email address';
       return '';
+    case 'city':
+      if (!value.trim()) return 'Town / city is required';
+      if (value.trim().length < 2) return 'Enter a valid town or city';
+      return '';
     case 'password':
       if (!value) return 'Password is required';
       if (value.length < 8) return 'Password must be at least 8 characters';
@@ -93,6 +100,7 @@ export function validateSignupForm(fields: SignupFields): SignupErrors {
     firstName: validateSignupField('firstName', fields.firstName, fields),
     lastName: validateSignupField('lastName', fields.lastName, fields),
     email: validateSignupField('email', fields.email, fields),
+    city: validateSignupField('city', fields.city, fields),
     password: validateSignupField('password', fields.password, fields),
     confirmPassword: validateSignupField(
       'confirmPassword',
