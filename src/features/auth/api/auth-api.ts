@@ -24,7 +24,10 @@ const resetPasswordSchema = z
   })
   .passthrough();
 
-export type SignupPayload = SignupFields & { referralId: string };
+export type SignupPayload = SignupFields & {
+  referralId: string;
+  acceptedTerms?: boolean;
+};
 
 export async function signIn(
   http: HttpClient,

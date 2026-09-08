@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
 
 import { fetchThingsMatchAccountToken, signUp } from '../api/auth-api';
 import { useSession } from '../hooks/use-session';
@@ -28,6 +28,8 @@ import { useTheme } from '@/shared/theme';
 import { BrandLogo, Text } from '@/shared/ui';
 
 const THINGSMATCH_APP = 'https://thingsmatch.com/app';
+const TERMS_URL = 'https://www.natcycle.com/terms-and-conditions/';
+const PRIVACY_URL = 'https://www.natcycle.com/privacy-policy/';
 
 export type SignUpQuery = {
   referral?: string;
@@ -44,6 +46,8 @@ export function SignUpScreen({ query = {} }: { query?: SignUpQuery }) {
   const form = useSignupForm(query.referral ?? '');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
 
@@ -51,12 +55,18 @@ export function SignUpScreen({ query = {} }: { query?: SignUpQuery }) {
     if (!form.validateAll()) {
       return;
     }
+    if (!acceptedTerms) {
+      setTermsError('Please agree to the Terms & Conditions to continue');
+      return;
+    }
+    setTermsError('');
     setPending(true);
     setError('');
     try {
       const session = await signUp(http, {
         ...form.fields,
         referralId: form.referralId,
+        acceptedTerms: true,
       });
       await persist(session);
       if (wantsThingsMatchFlow(query)) {
@@ -218,6 +228,77 @@ export function SignUpScreen({ query = {} }: { query?: SignUpQuery }) {
             onChangeText={form.setReferralId}
           />
         </AuthFieldCard>
+
+        <Pressable
+          testID="sign-up-terms"
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: acceptedTerms }}
+          onPress={() => {
+            setAcceptedTerms((value) => {
+              const next = !value;
+              if (next) setTermsError('');
+              return next;
+            });
+          }}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            gap: theme.space[3],
+            paddingHorizontal: 4,
+          }}
+        >
+          <View
+            style={{
+              width: 20,
+              height: 20,
+              marginTop: 2,
+              borderRadius: 4,
+              borderWidth: 1.5,
+              borderColor: acceptedTerms ? theme.color.accent : theme.color.inputBorder,
+              backgroundColor: acceptedTerms ? theme.color.accent : theme.color.surface,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {acceptedTerms ? (
+              <Text style={{ color: theme.color.accentText, fontSize: 12 }}>✓</Text>
+            ) : null}
+          </View>
+          <Text
+            variant="small"
+            style={{ flex: 1, color: theme.color.textMuted, lineHeight: 18 }}
+          >
+            I agree to the{' '}
+            <Text
+              variant="small"
+              onPress={() => {
+                void Linking.openURL(TERMS_URL);
+              }}
+              style={{
+                color: theme.color.accent,
+                textDecorationLine: 'underline',
+                fontFamily: theme.font.medium,
+              }}
+            >
+              Terms & Conditions
+            </Text>{' '}
+            and{' '}
+            <Text
+              variant="small"
+              onPress={() => {
+                void Linking.openURL(PRIVACY_URL);
+              }}
+              style={{
+                color: theme.color.accent,
+                textDecorationLine: 'underline',
+                fontFamily: theme.font.medium,
+              }}
+            >
+              Privacy Policy
+            </Text>
+          </Text>
+        </Pressable>
+        <AuthFieldError message={termsError} />
 
         <AuthPrimaryButton
           testID="sign-up-submit"

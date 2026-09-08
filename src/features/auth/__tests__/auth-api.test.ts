@@ -81,6 +81,7 @@ describe('signUp', () => {
         gender: 'female',
         city: 'Hamden',
         referralId: '',
+        acceptedTerms: true,
       }),
     ).resolves.toEqual({ token: 'jwt-1', userId: 'user-1' });
   });

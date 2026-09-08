@@ -55,6 +55,7 @@ describe('SignUpScreen', () => {
     });
 
     await fillValidSignup();
+    await fireEvent.press(screen.getByTestId('sign-up-terms'));
     await fireEvent.press(screen.getByTestId('sign-up-submit'));
 
     await waitFor(() => {
@@ -69,6 +70,7 @@ describe('SignUpScreen', () => {
         city: 'Hamden',
         gender: 'female',
         referralId: '',
+        acceptedTerms: true,
       }),
     });
   });
@@ -92,6 +94,7 @@ describe('SignUpScreen', () => {
     });
 
     await fillValidSignup();
+    await fireEvent.press(screen.getByTestId('sign-up-terms'));
     await fireEvent.press(screen.getByTestId('sign-up-submit'));
 
     await waitFor(() => {
