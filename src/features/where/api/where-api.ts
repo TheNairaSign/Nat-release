@@ -1,6 +1,7 @@
 import {
-  isMaterialTypeMatch,
-  mergeWhereMaterialChips,
+  displayMaterials,
+  locationAcceptsCanonical,
+  sortMaterialCategories,
   type MaterialChipInput,
 } from '@/core/materials';
 import {
@@ -13,7 +14,6 @@ import {
   type WhereBranch,
   type WherePlace,
 } from '@/core/where';
-import { getEnv } from '@/shared/config/env';
 import type { HttpClient } from '@/shared/ports/http';
 
 export const whereChipsQueryKey = ['where', 'chips'] as const;
@@ -46,25 +46,15 @@ function asChipInputs(raw: unknown[]): MaterialChipInput[] {
 }
 
 export async function fetchWhereChips(http: HttpClient): Promise<string[]> {
-  const env = getEnv();
-  const [materials, thingsMatch] = await Promise.allSettled([
-    http.request({ path: '/materials/primary-types', method: 'GET' }),
-    http.request({
-      path: `${env.ursApiUrl}/platforms/natcycle/thingsmatch-categories`,
-      method: 'GET',
-      headers: { 'X-API-Key': env.ursApiKey },
-      token: '',
-    }),
-  ]);
+  const materials = await http.request({
+    path: '/materials/primary-types',
+    method: 'GET',
+  });
   let primary: MaterialChipInput[] = [];
-  let tm: MaterialChipInput[] = [];
-  if (materials.status === 'fulfilled' && materials.value.status < 300) {
-    primary = asChipInputs(unwrapList(materials.value.body));
+  if (materials.status < 300) {
+    primary = asChipInputs(unwrapList(materials.body));
   }
-  if (thingsMatch.status === 'fulfilled' && thingsMatch.value.status < 300) {
-    tm = asChipInputs(unwrapList(thingsMatch.value.body));
-  }
-  return mergeWhereMaterialChips(primary, tm);
+  return sortMaterialCategories(primary);
 }
 
 function coordsOf(raw: unknown): { lng: number; lat: number } | null {
@@ -142,6 +132,9 @@ export async function fetchWherePlaces(
   materialType?: string,
 ): Promise<WherePlace[]> {
   const itemType = materialType ?? '';
+  const campaignQuery = materialType
+    ? `&materialType=${encodeURIComponent(materialType)}`
+    : '';
   const [regular, simple, campaigns] = await Promise.allSettled([
     http.request({
       path: `/dropOff-location/nearest/location?latitude=${origin.latitude}&longitude=${origin.longitude}&itemType=${encodeURIComponent(itemType)}`,
@@ -154,7 +147,7 @@ export async function fetchWherePlaces(
       method: 'GET',
     }),
     http.request({
-      path: `/campaigns/map?latitude=${origin.latitude}&longitude=${origin.longitude}&radius=500000&limit=200`,
+      path: `/campaigns/map?latitude=${origin.latitude}&longitude=${origin.longitude}&radius=500000&limit=200${campaignQuery}`,
       method: 'GET',
     }),
   ]);
@@ -177,11 +170,14 @@ export async function fetchWherePlaces(
         typeof raw.secondaryMaterialType === 'string'
           ? raw.secondaryMaterialType
           : null;
-      if (
-        materialType &&
-        !isMaterialTypeMatch(materialType, primary, secondary)
-      )
+      const fields = {
+        primaryMaterialType: primary,
+        secondaryMaterialType: secondary,
+        itemType: typeof raw.itemType === 'string' ? raw.itemType : null,
+      };
+      if (materialType && !locationAcceptsCanonical(fields, materialType))
         continue;
+      const display = displayMaterials(fields, materialType ?? null);
       places.push({
         kind: 'regular',
         id,
@@ -193,8 +189,8 @@ export async function fetchWherePlaces(
           typeof raw.organizationName === 'string'
             ? raw.organizationName
             : undefined,
-        materials: [primary, secondary].filter((item): item is string =>
-          Boolean(item),
+        materials: [display.icon, display.secondary].filter(
+          (item): item is string => Boolean(item),
         ),
         record: true,
         tag: 'Center',
@@ -219,12 +215,21 @@ export async function fetchWherePlaces(
       if (!id || !xy) continue;
       const bulk = strings(raw.bulkMaterialTypes);
       const subtypes = strings(raw.acceptedSubtypes);
-      if (
-        materialType &&
-        !isMaterialTypeMatch(materialType, bulk[0], bulk[1], bulk, subtypes)
-      ) {
+      const packageTags = Array.isArray(raw.materialPackageTags)
+        ? (raw.materialPackageTags as Array<{ material?: string }>)
+        : [];
+      const fields = {
+        bulkMaterialTypes: bulk,
+        iconMaterialType:
+          typeof raw.iconMaterialType === 'string'
+            ? raw.iconMaterialType
+            : null,
+        materialPackageTags: packageTags,
+      };
+      if (materialType && !locationAcceptsCanonical(fields, materialType)) {
         continue;
       }
+      const display = displayMaterials(fields, materialType ?? null);
       places.push({
         kind: 'simple',
         id,
@@ -236,7 +241,9 @@ export async function fetchWherePlaces(
           typeof raw.organizationName === 'string'
             ? raw.organizationName
             : undefined,
-        materials: bulk.length > 0 ? bulk : subtypes,
+        materials: [display.icon, display.secondary].filter(
+          (item): item is string => Boolean(item),
+        ),
         record: raw.record !== false,
         tag:
           typeof raw.displayTag === 'string' && raw.displayTag
@@ -266,6 +273,12 @@ export async function fetchWherePlaces(
       const xy = coordsOf(raw);
       if (!id || !xy) continue;
       const materials = strings(raw.materialTypes);
+      if (
+        materialType &&
+        !locationAcceptsCanonical({ materialTypes: materials }, materialType)
+      ) {
+        continue;
+      }
       const campaign = {
         id,
         status: typeof raw.status === 'string' ? raw.status : undefined,

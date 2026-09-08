@@ -1,23 +1,19 @@
-function escapeRegex(value: string): string {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+/**
+ * Canonical materials system (Where 1A + 2A).
+ * Keep in sync with client/src/utils/materialMatch.ts.
+ */
 
-const TYRE_ALIASES = ['tire', 'tires', 'tyre', 'tyres', 'wheel', 'wheels'];
-const DRUG_ALIASES = [
-  'drug',
-  'drugs',
-  'medication',
-  'medicine',
-  'pharmaceutical',
-  'pharma',
-  'prescription',
-  'pill',
-  'pills',
-  'capsule',
-  'capsules',
-];
+export type LocationMaterialFields = {
+  primaryMaterialType?: string | null;
+  secondaryMaterialType?: string | null;
+  itemType?: string | null;
+  iconMaterialType?: string | null;
+  bulkMaterialTypes?: string[] | null;
+  materialTypes?: string[] | null;
+  materialPackageTags?: Array<{ material?: string | null } | null> | null;
+};
 
-const MATERIAL_ALIASES: Record<string, string[]> = {
+const CANONICAL_ALIASES: Record<string, string[]> = {
   plastic: [
     'plastic',
     'plastics',
@@ -42,48 +38,20 @@ const MATERIAL_ALIASES: Record<string, string[]> = {
     'shoe',
     'shoes',
   ],
-  fabrics: [
-    'fabric',
-    'fabrics',
-    'cloth',
-    'clothes',
-    'clothing',
-    'textile',
-    'textiles',
-    'shoe',
-    'shoes',
-  ],
   glass: ['glass', 'sodalime', 'soda lime'],
-  metal: ['metal', 'aluminium', 'aluminum', 'can', 'cans', 'scrap'],
-  aluminium: ['aluminium', 'aluminum', 'can', 'cans', 'metal'],
-  aluminum: ['aluminium', 'aluminum', 'can', 'cans', 'metal'],
+  metal: ['metal', 'metals', 'aluminium', 'aluminum', 'scrap', 'cans'],
   paper: ['paper', 'cardboard', 'newspaper', 'book', 'books'],
   organic: ['organic', 'organics', 'food', 'garden'],
-  organics: ['organic', 'organics', 'food', 'garden'],
-  food: ['food', 'organic', 'organics'],
   ewaste: [
     'ewaste',
     'e-waste',
+    'e waste',
     'electronics',
     'electronic',
     'battery',
     'batteries',
   ],
-  electronics: [
-    'ewaste',
-    'e-waste',
-    'electronics',
-    'electronic',
-    'battery',
-    'batteries',
-  ],
-  // Added on web in "Align campaign material checkboxes with stored alias
-  // labels" (d89313a). Without these a "Tires" / "Drugs" / "Hazardous" filter
-  // chip matched nothing on mobile, because stored values use the variants.
-  tire: TYRE_ALIASES,
-  tires: TYRE_ALIASES,
-  tyre: TYRE_ALIASES,
-  tyres: TYRE_ALIASES,
+  tire: ['tire', 'tires', 'tyre', 'tyres'],
   hazardous: [
     'hazardous',
     'hazard',
@@ -92,45 +60,173 @@ const MATERIAL_ALIASES: Record<string, string[]> = {
     'chemical',
     'chemicals',
   ],
-  drug: DRUG_ALIASES,
-  drugs: DRUG_ALIASES,
+  drug: [
+    'drug',
+    'drugs',
+    'medication',
+    'medicine',
+    'pharmaceutical',
+    'pharma',
+    'prescription',
+    'pill',
+    'pills',
+    'capsule',
+    'capsules',
+  ],
 };
 
-export function expandMaterialTerms(materialType: string): string[] {
-  if (!materialType) return [];
-  const raw = String(materialType).toLowerCase().trim();
-  if (!raw) return [];
-  const terms = new Set<string>([raw]);
-  for (const [key, aliases] of Object.entries(MATERIAL_ALIASES)) {
-    const inFamily =
-      raw === key ||
-      aliases.some(
-        (alias) => raw === alias || raw.includes(alias) || alias.includes(raw),
-      );
-    if (inFamily) {
-      terms.add(key);
-      aliases.forEach((alias) => terms.add(alias));
-    }
+const ALIAS_TO_CANONICAL: Map<string, string> = (() => {
+  const map = new Map<string, string>();
+  for (const [canonical, aliases] of Object.entries(CANONICAL_ALIASES)) {
+    map.set(canonical, canonical);
+    for (const alias of aliases) map.set(alias, canonical);
   }
-  return Array.from(terms);
+  map.set('fabrics', 'fabric');
+  map.set('organics', 'organic');
+  map.set('food', 'organic');
+  map.set('electronics', 'ewaste');
+  map.set('aluminium', 'metal');
+  map.set('aluminum', 'metal');
+  map.set('tires', 'tire');
+  map.set('tyre', 'tire');
+  map.set('tyres', 'tire');
+  map.set('drugs', 'drug');
+  return map;
+})();
+
+function normalizeRaw(value: string): string {
+  return String(value || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[_/]+/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+export function toCanonicalMaterialId(
+  raw: string | null | undefined,
+): string | null {
+  if (raw == null) return null;
+  const normalized = normalizeRaw(String(raw));
+  if (!normalized || normalized === 'all') return null;
+  return ALIAS_TO_CANONICAL.get(normalized) ?? null;
+}
+
+export function aliasesForCanonicalId(canonicalId: string): string[] {
+  const id = toCanonicalMaterialId(canonicalId) || normalizeRaw(canonicalId);
+  if (!id) return [];
+  const aliases = CANONICAL_ALIASES[id] || [id];
+  return Array.from(new Set([id, ...aliases]));
+}
+
+export function expandMaterialTerms(materialType: string): string[] {
+  const canon = toCanonicalMaterialId(materialType);
+  if (!canon) {
+    const raw = normalizeRaw(materialType);
+    return raw ? [raw] : [];
+  }
+  return aliasesForCanonicalId(canon);
 }
 
 export function fieldMatchesMaterial(
   value: string | null | undefined,
   materialType: string,
 ): boolean {
-  if (!value || !materialType) return false;
-  const hay = String(value).toLowerCase().trim();
-  return expandMaterialTerms(materialType).some((term) => {
-    if (term.length <= 3) {
-      const re = new RegExp(
-        `(^|[^a-z0-9])${escapeRegex(term)}([^a-z0-9]|$)`,
-        'i',
-      );
-      return re.test(hay);
-    }
-    return hay.includes(term) || term.includes(hay);
-  });
+  const left = toCanonicalMaterialId(value);
+  const right = toCanonicalMaterialId(materialType);
+  if (!left || !right) return false;
+  return left === right;
+}
+
+function pushRaw(target: string[], value: unknown) {
+  if (typeof value === 'string' && value.trim()) target.push(value.trim());
+}
+
+export function acceptedCanonicalIds(
+  locationLike: LocationMaterialFields | null | undefined,
+): string[] {
+  if (!locationLike) return [];
+  const raw: string[] = [];
+  pushRaw(raw, locationLike.primaryMaterialType);
+  pushRaw(raw, locationLike.secondaryMaterialType);
+  pushRaw(raw, locationLike.itemType);
+  pushRaw(raw, locationLike.iconMaterialType);
+  for (const entry of locationLike.bulkMaterialTypes || []) pushRaw(raw, entry);
+  for (const entry of locationLike.materialTypes || []) pushRaw(raw, entry);
+  for (const tag of locationLike.materialPackageTags || []) {
+    if (tag) pushRaw(raw, tag.material);
+  }
+  const ids = new Set<string>();
+  for (const entry of raw) {
+    const id = toCanonicalMaterialId(entry);
+    if (id) ids.add(id);
+  }
+  return Array.from(ids);
+}
+
+export function locationAcceptsCanonical(
+  locationLike: LocationMaterialFields | null | undefined,
+  selected: string | null | undefined,
+): boolean {
+  if (!selected) return true;
+  const needle = toCanonicalMaterialId(selected);
+  if (!needle) return false;
+  return acceptedCanonicalIds(locationLike).includes(needle);
+}
+
+export function storedPrimaryMaterial(
+  locationLike: LocationMaterialFields | null | undefined,
+): string | null {
+  if (!locationLike) return null;
+  const bulk = locationLike.bulkMaterialTypes || [];
+  if (bulk[0]?.trim()) return bulk[0].trim();
+  if (locationLike.primaryMaterialType?.trim()) {
+    return locationLike.primaryMaterialType.trim();
+  }
+  if (locationLike.itemType?.trim()) return locationLike.itemType.trim();
+  const types = locationLike.materialTypes || [];
+  if (types[0]?.trim()) return types[0].trim();
+  if (locationLike.iconMaterialType?.trim()) {
+    return locationLike.iconMaterialType.trim();
+  }
+  return null;
+}
+
+export function storedSecondaryMaterial(
+  locationLike: LocationMaterialFields | null | undefined,
+): string | null {
+  if (!locationLike) return null;
+  const bulk = locationLike.bulkMaterialTypes || [];
+  if (bulk[1]?.trim() && bulk[1].trim() !== bulk[0]?.trim()) {
+    return bulk[1].trim();
+  }
+  if (locationLike.secondaryMaterialType?.trim()) {
+    return locationLike.secondaryMaterialType.trim();
+  }
+  return null;
+}
+
+export function displayMaterials(
+  locationLike: LocationMaterialFields | null | undefined,
+  selected: string | null | undefined,
+): { icon: string; secondary?: string } {
+  const selectedCanon = selected ? toCanonicalMaterialId(selected) : null;
+  if (
+    selected &&
+    selectedCanon &&
+    locationAcceptsCanonical(locationLike, selected)
+  ) {
+    return { icon: selected };
+  }
+  const primary = storedPrimaryMaterial(locationLike) || 'others';
+  const secondary = storedSecondaryMaterial(locationLike) || undefined;
+  return {
+    icon: primary,
+    secondary:
+      secondary &&
+      toCanonicalMaterialId(secondary) !== toCanonicalMaterialId(primary)
+        ? secondary
+        : undefined,
+  };
 }
 
 export function isMaterialTypeMatch(
@@ -138,19 +234,17 @@ export function isMaterialTypeMatch(
   primaryMaterial?: string | null,
   secondaryMaterial?: string | null,
   bulkMaterials?: string[],
-  acceptedSubtypes?: string[],
+  _acceptedSubtypes?: string[],
 ): boolean {
   if (!searchMaterial) return false;
-  if (fieldMatchesMaterial(primaryMaterial, searchMaterial)) return true;
-  if (fieldMatchesMaterial(secondaryMaterial, searchMaterial)) return true;
-  if (bulkMaterials?.some((mat) => fieldMatchesMaterial(mat, searchMaterial)))
-    return true;
-  if (
-    acceptedSubtypes?.some((sub) => fieldMatchesMaterial(sub, searchMaterial))
-  ) {
-    return true;
-  }
-  return false;
+  return locationAcceptsCanonical(
+    {
+      primaryMaterialType: primaryMaterial,
+      secondaryMaterialType: secondaryMaterial,
+      bulkMaterialTypes: bulkMaterials,
+    },
+    searchMaterial,
+  );
 }
 
 export function findMatchingMaterial(
@@ -158,21 +252,15 @@ export function findMatchingMaterial(
   availableMaterials: string[],
 ): string | null {
   if (!searchTerm || availableMaterials.length === 0) return null;
-  const normalizedSearch = searchTerm.toLowerCase().trim();
-  const exactMatch = availableMaterials.find(
-    (type) => type.toLowerCase() === normalizedSearch,
-  );
-  if (exactMatch) return exactMatch;
-  const substringMatch = availableMaterials.find((type) =>
-    type.toLowerCase().includes(normalizedSearch),
-  );
-  if (substringMatch) return substringMatch;
-  const reverseMatch = availableMaterials.find((type) =>
-    normalizedSearch.includes(type.toLowerCase()),
-  );
-  if (reverseMatch) return reverseMatch;
-  const otherType = availableMaterials.find((type) =>
-    type.toLowerCase().includes('others'),
-  );
-  return otherType ?? availableMaterials[0] ?? null;
+  const needle = searchTerm.trim();
+  for (const option of availableMaterials) {
+    if (option.toLowerCase() === needle.toLowerCase()) return option;
+  }
+  const needleCanon = toCanonicalMaterialId(needle);
+  if (needleCanon) {
+    for (const option of availableMaterials) {
+      if (toCanonicalMaterialId(option) === needleCanon) return option;
+    }
+  }
+  return null;
 }
