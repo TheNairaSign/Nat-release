@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PENDING_DROPOFF_KEY } from '@/core/dropoff';
@@ -131,12 +131,16 @@ export function WhereScreen({
       : picked;
   const panelFocus = selected?.kind === 'campaign' ? 'events' : focus;
   const visible = useMemo(() => {
-    const filtered = filterPlaces(placesQuery.data ?? [], {
+    // Search runs across every loaded place, not the filtered subset. Web's
+    // useLocationSearch searches `searchableData` (all of it), so scoping the
+    // query to the active platform/focus here meant a search from the Points
+    // card could never return an event — "it doesn't show all the results".
+    if (searchOpen) return searchPlaces(placesQuery.data ?? [], searchQuery);
+    return filterPlaces(placesQuery.data ?? [], {
       organization: orgFilter,
       platform,
       focus: panelFocus,
     });
-    return searchOpen ? searchPlaces(filtered, searchQuery) : filtered;
   }, [
     placesQuery.data,
     orgFilter,
@@ -299,7 +303,12 @@ export function WhereScreen({
             searchMaterialTypes={materialResults}
             onSelectPlace={(place) => {
               pick(place);
+              // Search spans every kind, so follow the result onto the card it
+              // belongs to; otherwise picking an event from the Points card
+              // leaves the panel showing the wrong context.
+              setFocus(place.kind === 'campaign' ? 'events' : 'points');
               setSearchOpen(false);
+              setSearchQuery('');
             }}
             filterOpen={filterOpen}
             onToggleFilter={() => setFilterOpen((open) => !open)}
@@ -331,6 +340,40 @@ export function WhereScreen({
               }}
             />
           </View>
+        ) : null}
+        {!selected ? (
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Map and data accuracy disclaimer"
+            onPress={() => {
+              void linking.openUrl(
+                'https://natcycle.com/map-and-data-accuracy-disclaimer',
+              );
+            }}
+            style={{
+              position: 'absolute',
+              left: 12,
+              bottom: theme.layout.tabBarReserve + insets.bottom + 8,
+              maxWidth: '52%',
+              backgroundColor: 'rgba(255,255,255,0.9)',
+              borderRadius: 6,
+              paddingHorizontal: 8,
+              paddingVertical: 5,
+              borderWidth: 1,
+              borderColor: 'rgba(0,0,0,0.06)',
+            }}
+          >
+            <Text
+              numberOfLines={1}
+              style={{
+                fontSize: 10,
+                fontFamily: theme.font.medium,
+                color: theme.color.textMuted,
+              }}
+            >
+              Map & data accuracy
+            </Text>
+          </Pressable>
         ) : null}
         <FilterMenu
           open={filterOpen}
