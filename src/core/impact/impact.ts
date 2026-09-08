@@ -29,9 +29,17 @@ export type MaterialContribution = {
 
 export function activityDayKey(iso?: string): string | null {
   if (!iso) return null;
+  // Local calendar day, not UTC — see the note on toDayKey in core/where.
+  // `toISOString()` shifts the day west of Greenwich, which put drop-offs on
+  // the wrong square of the Green Commits grid.
+  const match = iso.trim().match(/^(\d{4}-\d{2}-\d{2})/);
+  if (match) return match[1] ?? null;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().slice(0, 10);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 export function sinceLabel(createdAt?: string): string {
@@ -170,22 +178,6 @@ export function impactUnitForCard(materialType: string): string {
 }
 
 export type HeatCell = { key: string; count: number; level: 0 | 1 | 2 | 3 };
-
-export function yearHeatCells(
-  year: number,
-  counts: Record<string, number>,
-): HeatCell[] {
-  const start = new Date(Date.UTC(year, 0, 1));
-  const end = new Date(Date.UTC(year, 11, 31));
-  const cells: HeatCell[] = [];
-  for (let time = start.getTime(); time <= end.getTime(); time += 86400000) {
-    const key = new Date(time).toISOString().slice(0, 10);
-    const count = counts[key] ?? 0;
-    const level = count <= 0 ? 0 : count === 1 ? 1 : count <= 3 ? 2 : 3;
-    cells.push({ key, count, level });
-  }
-  return cells;
-}
 
 export function uniqueActiveDays(
   items: DropoffActivity[],

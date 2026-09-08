@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import Mapbox from '@rnmapbox/maps';
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 
 import { getEnv } from '@/shared/config/env';
 
@@ -19,6 +19,7 @@ export function WhereMap({
   showsUser,
   children,
   onMarkerPress,
+  cameraMode = 'follow',
 }: {
   center: { latitude: number; longitude: number };
   zoom: number;
@@ -26,6 +27,15 @@ export function WhereMap({
   showsUser: boolean;
   children: (marker: MapMarker) => ReactNode;
   onMarkerPress: (id: string) => void;
+  /**
+   * `follow` (default) keeps the camera bound to `center`/`zoom` — Where needs
+   * this so selecting a place recentres the map.
+   *
+   * `initial` positions the camera once and then leaves it alone. A controlled
+   * Camera re-applies its `zoomLevel` on every render, which silently undoes
+   * the user's pinch — that is why the Impact map would not zoom.
+   */
+  cameraMode?: 'follow' | 'initial';
 }) {
   useEffect(() => {
     Mapbox.setAccessToken(getEnv().mapboxToken);
@@ -40,21 +50,41 @@ export function WhereMap({
       logoEnabled={false}
       attributionEnabled={false}
     >
-      <Mapbox.Camera
-        centerCoordinate={[center.longitude, center.latitude]}
-        zoomLevel={zoom}
-        animationDuration={700}
-      />
+      {cameraMode === 'follow' ? (
+        <Mapbox.Camera
+          centerCoordinate={[center.longitude, center.latitude]}
+          zoomLevel={zoom}
+          animationDuration={700}
+        />
+      ) : (
+        <Mapbox.Camera
+          defaultSettings={{
+            centerCoordinate: [center.longitude, center.latitude],
+            zoomLevel: zoom,
+          }}
+        />
+      )}
       {showsUser ? <Mapbox.UserLocation visible animated /> : null}
       {markers.map((marker) => (
-        <Mapbox.PointAnnotation
+        // MarkerView, not PointAnnotation: on Android PointAnnotation
+        // rasterises its children into a bitmap, which drops the drop-shadow,
+        // squares off `borderRadius` (circles became boxes) and mangles the
+        // absolutely-positioned secondary-material badge. MarkerView mounts
+        // real RN views over the map, so all three survive.
+        <Mapbox.MarkerView
           key={marker.id}
-          id={marker.id}
           coordinate={[marker.lng, marker.lat]}
-          onSelected={() => onMarkerPress(marker.id)}
+          allowOverlap
+          anchor={{ x: 0.5, y: 0.5 }}
         >
-          <View collapsable={false}>{children(marker)}</View>
-        </Mapbox.PointAnnotation>
+          <Pressable
+            testID={`where-place-${marker.id}`}
+            accessibilityRole="button"
+            onPress={() => onMarkerPress(marker.id)}
+          >
+            {children(marker)}
+          </Pressable>
+        </Mapbox.MarkerView>
       ))}
     </Mapbox.MapView>
   );

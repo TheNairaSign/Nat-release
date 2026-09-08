@@ -7,6 +7,7 @@ import {
   searchOrganizations,
   searchTypeLabel,
   type WherePlace,
+  getCampaignPhase,
 } from '@/core/where';
 
 describe('where hrefs and filters', () => {
@@ -149,5 +150,45 @@ describe('searchMaterialTypes', () => {
       'Plastic',
       'Glass',
     ]);
+  });
+});
+
+describe('campaign day keys (timezone)', () => {
+  // Ported from web 6db3a29 "Fix campaign date timezone shift".
+  // `toISOString()` converts to UTC first, so west of Greenwich a campaign
+  // dated Sep 9 was keyed as Sep 8 and could read as ended a day early.
+  //
+  // These assertions are built from *local* date parts so they hold in any
+  // timezone the suite runs in.
+  const localDayString = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+      date.getDate(),
+    ).padStart(2, '0')}`;
+
+  it('keeps an event live all through its end day, late in the evening', () => {
+    // A date-only endDate parses as midnight UTC; comparing instants marked
+    // a same-day event as ended from 01:00 local in Lagos. Fixed in both
+    // mobile and client/src/utils/campaignUtils.ts.
+    const now = new Date(2026, 8, 9, 23, 30, 0);
+    const today = localDayString(now);
+    expect(getCampaignPhase({ startDate: today, endDate: today }, now)).toBe(
+      'live',
+    );
+  });
+
+  it('treats a campaign dated today as live, early in the morning', () => {
+    // 00:30 local is the case that flipped to the previous UTC day.
+    const now = new Date(2026, 8, 9, 0, 30, 0);
+    const today = localDayString(now);
+    expect(
+      getCampaignPhase({ startDate: today, endDate: today }, now),
+    ).toBe('live');
+  });
+
+  it('still reports a genuinely finished campaign as ended', () => {
+    const now = new Date(2026, 8, 9, 12, 0, 0);
+    expect(
+      getCampaignPhase({ startDate: '2026-09-01', endDate: '2026-09-02' }, now),
+    ).toBe('ended');
   });
 });

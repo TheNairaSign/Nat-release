@@ -11,11 +11,27 @@ export type CampaignLike = {
   sharedTimeSlots?: { start?: string; end?: string }[];
 };
 
+/**
+ * Calendar day in the **local** timezone.
+ *
+ * Ported from web's `toCampaignDayKey` (commit 6db3a29, "Fix campaign date
+ * timezone shift"). `toISOString()` converts to UTC first, which moves the day
+ * backwards west of Greenwich — Sep 9 reads as Sep 8 — so a campaign could be
+ * shown as ended a day early. Prefer the calendar date already encoded in the
+ * string, and otherwise read the local date parts.
+ */
 function toDayKey(value: string | Date | null | undefined): string | null {
   if (!value) return null;
+  if (typeof value === 'string') {
+    const match = value.trim().match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match) return match[1] ?? null;
+  }
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().slice(0, 10);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function openDateKeys(campaign: CampaignLike): string[] {
@@ -73,10 +89,12 @@ export function getCampaignPhase(
     if (!endKey || endKey >= today) return 'upcoming';
     return 'ended';
   }
-  if (campaign.endDate) {
-    const end = new Date(campaign.endDate);
-    if (!Number.isNaN(end.getTime()) && end < now) return 'ended';
-  }
+  // Compare calendar days, not instants. A date-only `endDate` ('2026-09-09')
+  // parses as midnight **UTC**, so a raw `end < now` marked an event running
+  // *today* as ended as soon as local time passed that instant. Kept in step
+  // with the same fix in client/src/utils/campaignUtils.ts.
+  const endKey = toDayKey(campaign.endDate);
+  if (endKey && endKey < today) return 'ended';
   return 'live';
 }
 

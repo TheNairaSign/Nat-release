@@ -2,6 +2,21 @@ function escapeRegex(value: string): string {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+const TYRE_ALIASES = ['tire', 'tires', 'tyre', 'tyres', 'wheel', 'wheels'];
+const DRUG_ALIASES = [
+  'drug',
+  'drugs',
+  'medication',
+  'medicine',
+  'pharmaceutical',
+  'pharma',
+  'prescription',
+  'pill',
+  'pills',
+  'capsule',
+  'capsules',
+];
+
 const MATERIAL_ALIASES: Record<string, string[]> = {
   plastic: [
     'plastic',
@@ -62,6 +77,23 @@ const MATERIAL_ALIASES: Record<string, string[]> = {
     'battery',
     'batteries',
   ],
+  // Added on web in "Align campaign material checkboxes with stored alias
+  // labels" (d89313a). Without these a "Tires" / "Drugs" / "Hazardous" filter
+  // chip matched nothing on mobile, because stored values use the variants.
+  tire: TYRE_ALIASES,
+  tires: TYRE_ALIASES,
+  tyre: TYRE_ALIASES,
+  tyres: TYRE_ALIASES,
+  hazardous: [
+    'hazardous',
+    'hazard',
+    'biohazard',
+    'toxic',
+    'chemical',
+    'chemicals',
+  ],
+  drug: DRUG_ALIASES,
+  drugs: DRUG_ALIASES,
 };
 
 export function expandMaterialTerms(materialType: string): string[] {

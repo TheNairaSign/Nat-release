@@ -6,6 +6,8 @@ import { useTheme } from '@/shared/theme';
 import { ChevronGlyph, CloseGlyph } from '@/shared/ui/icons/glyphs';
 import { Text } from '@/shared/ui/Text';
 
+import { EventMaterialBlock } from './EventMaterialBlock';
+
 /** Transcribed from PHASE_UI in
  *  client/src/pages/dashboard/where/components/CampaignDetailsCard.tsx */
 const PHASE_CARD = {
@@ -377,7 +379,10 @@ export function LocationSheet({
             ) : null}
           </View>
         ) : null}
-        {(place.acceptedSubtypes ?? []).length > 0 ? (
+        {campaign ? (
+          // Events use web's lime chip block rather than a plain text list.
+          <EventMaterialBlock materials={place.materials} />
+        ) : (place.acceptedSubtypes ?? []).length > 0 ? (
           <Text variant="caption" muted>
             Accepted: {(place.acceptedSubtypes ?? []).slice(0, 5).join(', ')}
           </Text>

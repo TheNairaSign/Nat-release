@@ -10,6 +10,8 @@ export const glass = {
    */
   fill: 'rgba(255, 255, 255, 0.55)',
   fillOverBlur: 'rgba(255, 255, 255, 0.357)',
+  /** Used where the platform cannot blur — must be legible unaided. */
+  fillOpaque: 'rgba(255, 255, 255, 0.94)',
   /** intensity * 0.2 = CSS blur px, so 100 -> blur(20px). */
   blurIntensity: 100,
   border: 'rgba(255, 255, 255, 0.5)',

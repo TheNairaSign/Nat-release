@@ -50,6 +50,8 @@ jest.mock('@rnmapbox/maps', () => {
         React.createElement(View, { testID: 'where-map' }, children),
       Camera: () => null,
       UserLocation: () => null,
+      MarkerView: ({ children }: { children: React.ReactNode }) =>
+        React.createElement(View, null, children),
       PointAnnotation: ({
         id,
         onSelected,

@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 
 import {
   formatDropoffWhen,
+  dropoffShareText,
   dropoffStatusColor,
   inMonth,
   isFutureMonth,
@@ -163,7 +164,14 @@ export function HistoryScreen() {
               </View>
               <Pressable
                 onPress={() => {
-                  void share.share('Show off your environmental impact!');
+                  void share.share(
+                    dropoffShareText({
+                      materialType: item.materialType ?? 'materials',
+                      carbonUnitsEarned: Math.round(item.carbonUnits),
+                      kind: item.kind,
+                      locationName: item.name,
+                    }),
+                  );
                 }}
               >
                 <Text style={{ fontFamily: theme.font.semibold }}>Share</Text>

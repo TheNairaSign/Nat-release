@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Dimensions, Pressable, ScrollView, View } from 'react-native';
 
 import { capitalizeChip } from '@/core/materials';
@@ -73,6 +74,10 @@ export function MapTopPanel({
 }) {
   const theme = useTheme();
   const iconActive = filterOpen || hasActiveFilters;
+  // Mirrors web's `chipGestureRef`: while a chip drag is in flight the card
+  // carousel is locked, so the swipe scrolls the materials rather than paging
+  // the card.
+  const [chipGesture, setChipGesture] = useState(false);
 
   return (
     <View>
@@ -82,6 +87,7 @@ export function MapTopPanel({
           onFocus(index === 0 ? 'points' : 'events')
         }
         cardWidthRatio={0.92}
+        scrollEnabled={!chipGesture}
         padLeft={SIDE_PAD}
         gap={12}
         scaleInactive
@@ -195,9 +201,19 @@ export function MapTopPanel({
                     </Pressable>
                   </View>
                 </View>
+                {/* This row lives inside the horizontal card carousel, so
+                    without `nestedScrollEnabled` the outer ScrollView takes the
+                    gesture and a chip swipe slides the whole card instead —
+                    you could never scroll past the first few materials. */}
                 <ScrollView
                   horizontal
+                  nestedScrollEnabled
+                  directionalLockEnabled
                   showsHorizontalScrollIndicator={false}
+                  onTouchStart={() => setChipGesture(true)}
+                  onTouchEnd={() => setChipGesture(false)}
+                  onTouchCancel={() => setChipGesture(false)}
+                  onMomentumScrollEnd={() => setChipGesture(false)}
                   style={{ marginTop: 12, height: theme.layout.chipRowHeight }}
                   contentContainerStyle={{ gap: 8, alignItems: 'center' }}
                 >

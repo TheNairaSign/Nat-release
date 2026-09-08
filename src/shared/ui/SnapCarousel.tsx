@@ -23,6 +23,7 @@ export function SnapCarousel({
   padLeft = 4,
   gap = 12,
   scaleInactive = false,
+  scrollEnabled = true,
 }: {
   children: ReactNode[];
   activeIndex: number;
@@ -35,6 +36,12 @@ export function SnapCarousel({
   gap?: number;
   /** Web `scaleInactive` — shrinks the non-active card to 0.92. */
   scaleInactive?: boolean;
+  /**
+   * Set false while a nested horizontal scroller (e.g. the material chips) is
+   * being dragged. Web does the same with `chipGestureRef`, locking the outer
+   * carousel so a chip swipe cannot slide the whole card.
+   */
+  scrollEnabled?: boolean;
 }) {
   const scrollRef = useRef<ScrollView>(null);
   const [width, setWidth] = useState(0);
@@ -51,6 +58,7 @@ export function SnapCarousel({
     <ScrollView
       ref={scrollRef}
       horizontal
+      scrollEnabled={scrollEnabled}
       showsHorizontalScrollIndicator={false}
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
       snapToInterval={interval > 0 ? interval : undefined}
