@@ -34,6 +34,7 @@ import { LocationSheet } from '../ui/LocationSheet';
 import { MapMarkerPin } from '../ui/MapMarkerPin';
 import { MapTopPanel } from '../ui/MapTopPanel';
 import { useQuery } from '@/shared/api';
+import { MAP_DATA_ACCURACY_URL } from '@/shared/config/legalUrls';
 import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
 import { ChromeScreen } from '@/shared/ui';
@@ -346,9 +347,7 @@ export function WhereScreen({
             accessibilityRole="link"
             accessibilityLabel="Map and data accuracy disclaimer"
             onPress={() => {
-              void linking.openUrl(
-                'https://natcycle.com/map-and-data-accuracy-disclaimer',
-              );
+              void linking.openUrl(MAP_DATA_ACCURACY_URL);
             }}
             style={{
               position: 'absolute',
