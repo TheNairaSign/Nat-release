@@ -26,10 +26,9 @@ import { readHttpErrorMessage } from '@/shared/api/errors';
 import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
 import { BrandLogo, Text } from '@/shared/ui';
+import { PRIVACY_URL, TERMS_URL } from '@/shared/config/legalUrls';
 
 const THINGSMATCH_APP = 'https://thingsmatch.com/app';
-const TERMS_URL = 'https://www.natcycle.com/terms-and-conditions/';
-const PRIVACY_URL = 'https://www.natcycle.com/privacy-policy/';
 
 export type SignUpQuery = {
   referral?: string;
