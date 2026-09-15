@@ -1,6 +1,12 @@
 import { BlurView } from 'expo-blur';
 import type { ReactNode } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import { useTheme } from '@/shared/theme';
 
@@ -31,15 +37,35 @@ export function GlassSurface({
 }) {
   const theme = useTheme();
 
+  // dimezisBlurView needs API 31+ to composite reliably; below that Android
+  // falls back to no blur, so the surface has to carry its own opacity.
+  const blurIsReliable =
+    Platform.OS === 'ios' ||
+    Platform.OS === 'web' ||
+    (Platform.OS === 'android' && Number(Platform.Version) >= 31);
+
   return (
     <View testID={testID} style={[{ overflow: 'hidden' }, style]}>
       <BlurView
         intensity={theme.glass.blurIntensity}
         tint="default"
+        // Android's blur is opt-in: `blurMethod` defaults to 'none', which
+        // renders BlurView as a plain translucent box. Without this the bar was
+        // see-through on the APK and page content collided with the tab labels.
+        blurMethod="dimezisBlurView"
         style={StyleSheet.absoluteFill}
       />
       <View
-        style={[{ backgroundColor: theme.glass.fillOverBlur }, contentStyle]}
+        style={[
+          {
+            // Where the platform gives no real blur, the surface must carry
+            // enough opacity to stay legible on its own.
+            backgroundColor: blurIsReliable
+              ? theme.glass.fillOverBlur
+              : theme.glass.fillOpaque,
+          },
+          contentStyle,
+        ]}
       >
         {children}
       </View>

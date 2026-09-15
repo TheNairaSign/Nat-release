@@ -17,6 +17,7 @@ import {
   searchMaterialTypes,
   searchOrganizations,
   searchPlaces,
+  wherePins,
   type MapPanelFocus,
   type WhereFilterId,
   type WherePlace,
@@ -177,10 +178,23 @@ export function WhereScreen({
   ).length;
   // Any change of selected place clears the branch focus, so the camera never
   // stays parked on a branch of a place the user has moved away from.
+  const [pickedBranch, setPickedBranch] = useState<number | null>(null);
+
   const pick = useCallback((place: WherePlace | null) => {
     setPicked(place);
     setBranchFocus(null);
+    setPickedBranch(null);
     if (place) setMaterialFocus(null);
+  }, []);
+
+  // Tapping a branch pin opens its parent with that branch selected — web's
+  // handleSimpleMarkerClick(location.id, extraLocationIndex).
+  const pickBranch = useCallback((place: WherePlace, index: number) => {
+    const branch = place.extraLocations?.[index];
+    setPicked(place);
+    setPickedBranch(index);
+    setBranchFocus(branch ? { lat: branch.lat, lng: branch.lng } : null);
+    setMaterialFocus(null);
   }, []);
 
   // Homepage Find Where / chip select: zoom to nearest matching place once.
@@ -214,6 +228,16 @@ export function WhereScreen({
     origin.longitude,
     picked,
   ]);
+
+  const pins = useMemo(() => wherePins(visible), [visible]);
+  const pinByKey = useMemo(
+    () => new Map(pins.map((pin) => [pin.key, pin])),
+    [pins],
+  );
+  const placeById = useMemo(
+    () => new Map(visible.map((place) => [place.id, place])),
+    [visible],
+  );
 
   const camera = useMemo(() => {
     // A branch chosen inside the location sheet wins over the place itself,
@@ -275,26 +299,37 @@ export function WhereScreen({
           center={camera}
           zoom={cameraZoom}
           showsUser={hasGps}
-          markers={visible.map((place) => ({
-            id: place.id,
-            lat: place.lat,
-            lng: place.lng,
-            selected: selected?.id === place.id,
+          markers={pins.map((pin) => ({
+            id: pin.key,
+            lat: pin.lat,
+            lng: pin.lng,
+            selected:
+              selected?.id === pin.placeId &&
+              (pickedBranch ?? null) === pin.branchIndex,
           }))}
-          onMarkerPress={(id) => {
-            const match = visible.find((place) => place.id === id);
-            if (match) pick(match);
+          onMarkerPress={(key) => {
+            const pin = pinByKey.get(key);
+            const place = pin ? placeById.get(pin.placeId) : undefined;
+            if (!pin || !place) return;
+            if (pin.branchIndex === null) pick(place);
+            else pickBranch(place, pin.branchIndex);
           }}
         >
           {(marker) => {
-            const place = visible.find((item) => item.id === marker.id);
-            if (!place) return null;
+            const pin = pinByKey.get(marker.id);
+            const place = pin ? placeById.get(pin.placeId) : undefined;
+            if (!pin || !place) return null;
             return (
               <MapMarkerPin
-                spec={markerSpecForPlace(place, {
-                  size: markerSizeForZoom(cameraZoom, marker.selected),
-                  isHighlighted: marker.selected,
-                })}
+                spec={markerSpecForPlace(
+                  // A branch borrows its parent's material and platform but
+                  // carries its own availability.
+                  { ...place, isActive: !pin.inactive },
+                  {
+                    size: markerSizeForZoom(cameraZoom, marker.selected),
+                    isHighlighted: marker.selected,
+                  },
+                )}
               />
             );
           }}
@@ -373,6 +408,8 @@ export function WhereScreen({
             }}
           >
             <LocationSheet
+              key={`${selected.id}:${pickedBranch ?? 'main'}`}
+              initialBranchIndex={pickedBranch}
               place={selected}
               reminderPending={reminderPending}
               onClose={() => pick(null)}

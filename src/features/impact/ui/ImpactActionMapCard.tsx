@@ -80,6 +80,8 @@ export function ImpactActionMapCard({
       <WhereMap
         center={view.center}
         zoom={view.zoom}
+        // Position once, then let the user pinch/pan freely.
+        cameraMode="initial"
         showsUser
         markers={markers}
         onMarkerPress={() => undefined}

@@ -1,5 +1,7 @@
 export {
+  dropoffShareText,
   dropoffStatusColor,
+  impactShareText,
   DROPOFF_SUCCESS_KEY,
   PENDING_DROPOFF_KEY,
   canSubmitCampaign,

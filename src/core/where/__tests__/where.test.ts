@@ -7,6 +7,9 @@ import {
   searchOrganizations,
   searchTypeLabel,
   type WherePlace,
+  getCampaignPhase,
+  wherePins,
+  type WhereBranch,
 } from '@/core/where';
 
 describe('where hrefs and filters', () => {
@@ -149,5 +152,104 @@ describe('searchMaterialTypes', () => {
       'Plastic',
       'Glass',
     ]);
+  });
+});
+
+describe('campaign day keys (timezone)', () => {
+  // Ported from web 6db3a29 "Fix campaign date timezone shift".
+  // `toISOString()` converts to UTC first, so west of Greenwich a campaign
+  // dated Sep 9 was keyed as Sep 8 and could read as ended a day early.
+  //
+  // These assertions are built from *local* date parts so they hold in any
+  // timezone the suite runs in.
+  const localDayString = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+      date.getDate(),
+    ).padStart(2, '0')}`;
+
+  it('keeps an event live all through its end day, late in the evening', () => {
+    // A date-only endDate parses as midnight UTC; comparing instants marked
+    // a same-day event as ended from 01:00 local in Lagos. Fixed in both
+    // mobile and client/src/utils/campaignUtils.ts.
+    const now = new Date(2026, 8, 9, 23, 30, 0);
+    const today = localDayString(now);
+    expect(getCampaignPhase({ startDate: today, endDate: today }, now)).toBe(
+      'live',
+    );
+  });
+
+  it('treats a campaign dated today as live, early in the morning', () => {
+    // 00:30 local is the case that flipped to the previous UTC day.
+    const now = new Date(2026, 8, 9, 0, 30, 0);
+    const today = localDayString(now);
+    expect(
+      getCampaignPhase({ startDate: today, endDate: today }, now),
+    ).toBe('live');
+  });
+
+  it('still reports a genuinely finished campaign as ended', () => {
+    const now = new Date(2026, 8, 9, 12, 0, 0);
+    expect(
+      getCampaignPhase({ startDate: '2026-09-01', endDate: '2026-09-02' }, now),
+    ).toBe('ended');
+  });
+});
+
+describe('wherePins', () => {
+  const site = (over: Partial<WherePlace>): WherePlace => ({
+    kind: 'simple',
+    id: 's1',
+    name: 'Hub',
+    lat: 4.8,
+    lng: 7.0,
+    materials: ['plastic'],
+    record: true,
+    ...over,
+  });
+  const branch = (over: Partial<WhereBranch> = {}): WhereBranch => ({
+    name: 'Branch',
+    lat: 4.9,
+    lng: 7.1,
+    isActive: true,
+    ...over,
+  });
+
+  it('draws a pin for the site and one for every branch', () => {
+    // Regression: mobile drew only the main site — 39 pins where web drew 304
+    // against production data around Port Harcourt.
+    const pins = wherePins([
+      site({ extraLocations: [branch(), branch(), branch()] }),
+    ]);
+    expect(pins).toHaveLength(4);
+    expect(pins.map((p) => p.branchIndex)).toEqual([null, 0, 1, 2]);
+  });
+
+  it('places each branch pin at the branch, not the parent', () => {
+    const [, first] = wherePins([
+      site({ extraLocations: [branch({ lat: 5.5, lng: 8.5 })] }),
+    ]);
+    expect(first).toMatchObject({ lat: 5.5, lng: 8.5 });
+  });
+
+  it('gives every pin a unique key', () => {
+    const pins = wherePins([
+      site({ id: 'a', extraLocations: [branch(), branch()] }),
+      site({ id: 'b', extraLocations: [branch()] }),
+    ]);
+    expect(new Set(pins.map((p) => p.key)).size).toBe(pins.length);
+  });
+
+  it('greys a branch when either it or its parent is inactive', () => {
+    const pins = wherePins([
+      site({ extraLocations: [branch({ isActive: false }), branch()] }),
+      site({ id: 'off', isActive: false, extraLocations: [branch()] }),
+    ]);
+    expect(pins.find((p) => p.key === 's1::0')?.inactive).toBe(true);
+    expect(pins.find((p) => p.key === 's1::1')?.inactive).toBe(false);
+    expect(pins.find((p) => p.key === 'off::0')?.inactive).toBe(true);
+  });
+
+  it('leaves places without branches as a single pin', () => {
+    expect(wherePins([site({ extraLocations: undefined })])).toHaveLength(1);
   });
 });

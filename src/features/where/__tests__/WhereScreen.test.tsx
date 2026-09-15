@@ -59,12 +59,20 @@ function httpForWhere(onReminder?: jest.Mock) {
                 _id: 'c1',
                 name: 'Community drive',
                 status: 'active',
+                // Campaigns are filtered by the selected material (web's
+                // locationAcceptsCanonical), so these must accept Food to
+                // appear when the screen opens with type="Food".
+                materialTypes: ['Food'],
                 location: { coordinates: [3.381, 6.531] },
               },
               {
                 _id: 'c2',
                 name: 'School fair',
                 status: 'active',
+                // Campaigns are filtered by the selected material (web's
+                // locationAcceptsCanonical), so these must accept Food to
+                // appear when the screen opens with type="Food".
+                materialTypes: ['Food'],
                 location: { coordinates: [3.382, 6.532] },
               },
             ],

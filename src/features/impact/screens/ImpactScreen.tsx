@@ -24,6 +24,7 @@ import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
 import { ChromeScreen, Text } from '@/shared/ui';
 import { ImpactBreakdownCard } from '../ui/ImpactBreakdownCard';
+import { impactShareText } from '@/core/dropoff';
 import { SnapCarousel } from '@/shared/ui/SnapCarousel';
 import { ImpactActionMapCard } from '../ui/ImpactActionMapCard';
 import { ImpactGreenCommitsCard } from '../ui/ImpactGreenCommitsCard';
@@ -244,7 +245,9 @@ export function ImpactScreen() {
       <Pressable
         testID="impact-share"
         onPress={() => {
-          void share.share('Show friends where your waste diversions add up.');
+          void share.share(
+            impactShareText(stats.dropoffs + stats.events, user?.carbonUnits ?? 0),
+          );
         }}
         style={{
           alignSelf: 'flex-end',

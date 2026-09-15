@@ -143,3 +143,50 @@ export function dropoffStatusColor(status?: string): string {
   if (status === 'Pending') return '#f97316';
   return '#ef4444';
 }
+
+export type DropoffShareInput = {
+  materialType: string;
+  carbonUnitsEarned: number;
+  kind: 'regular' | 'simple' | 'campaign';
+  locationName?: string;
+  campaignName?: string;
+};
+
+function capitalizeFirst(value: string): string {
+  if (!value) return '';
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+/**
+ * Share copy for one drop-off, from the `dropoff` templates in
+ * client/src/utils/socialTemplates.ts.
+ *
+ * The mobile share buttons were sending the share *modal's subtitle*
+ * ("Show off your environmental impact!") as the message body, so no material,
+ * CU value, location or campaign ever made it into the share.
+ */
+export function dropoffShareText(input: DropoffShareInput): string {
+  const material = capitalizeFirst(input.materialType || 'materials');
+  const cu = input.carbonUnitsEarned;
+
+  if (input.kind === 'campaign' && input.campaignName) {
+    const tag = input.campaignName.replace(/\s+/g, '');
+    return `🎯 Participated in "${input.campaignName}" campaign! Just dropped off ${material} materials and earned ${cu} Carbon Units. Join the movement! 🌍 #NatCycle #${tag} #SustainableCampaign`;
+  }
+
+  if (input.kind === 'simple' && input.locationName) {
+    return `🌿 Static drop-off completed at ${input.locationName}! ${material} materials → ${cu} CU earned. Making sustainability simple! ♻️ #NatCycle #EcoFriendly`;
+  }
+
+  return `✅ Just completed an eco-friendly dropoff! ${material} → ${cu} Carbon Units earned. Small steps, big impact! 🌱 #NatCycle #Sustainability #${material}Recycling`;
+}
+
+/**
+ * Share copy for the overall profile/impact, from the `achievement` templates.
+ */
+export function impactShareText(
+  totalDropoffs: number,
+  carbonUnits: number,
+): string {
+  return `🌍 Making a difference, one dropoff at a time! My journey with NatCycle: ${totalDropoffs} dropoffs completed, ${Math.floor(carbonUnits)} Carbon Units saved. Together, we can build a sustainable future! 💚 #SustainableLiving #NatCycle`;
+}

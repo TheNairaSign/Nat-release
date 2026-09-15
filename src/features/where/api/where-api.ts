@@ -216,7 +216,7 @@ export async function fetchWherePlaces(
       const bulk = strings(raw.bulkMaterialTypes);
       const subtypes = strings(raw.acceptedSubtypes);
       const packageTags = Array.isArray(raw.materialPackageTags)
-        ? (raw.materialPackageTags as Array<{ material?: string }>)
+        ? (raw.materialPackageTags as { material?: string }[])
         : [];
       const fields = {
         bulkMaterialTypes: bulk,

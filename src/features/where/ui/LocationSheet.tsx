@@ -6,6 +6,8 @@ import { useTheme } from '@/shared/theme';
 import { ChevronGlyph, CloseGlyph } from '@/shared/ui/icons/glyphs';
 import { Text } from '@/shared/ui/Text';
 
+import { EventMaterialBlock } from './EventMaterialBlock';
+
 /** Transcribed from PHASE_UI in
  *  client/src/pages/dashboard/where/components/CampaignDetailsCard.tsx */
 const PHASE_CARD = {
@@ -40,6 +42,7 @@ export function LocationSheet({
   onDirections,
   onReminder,
   onFocusBranch,
+  initialBranchIndex = null,
 }: {
   place: WherePlace;
   reminderPending?: boolean;
@@ -50,14 +53,18 @@ export function LocationSheet({
   /** Re-centres the map on the chosen branch, as `handleSimpleMarkerClick`
    *  does on web. Null selects the main location. */
   onFocusBranch?: (coords: { lat: number; lng: number } | null) => void;
+  /** Branch pin the user tapped on the map, so the sheet opens on it. */
+  initialBranchIndex?: number | null;
 }) {
   const theme = useTheme();
   const [descOpen, setDescOpen] = useState(false);
   // Web keeps `selectedExtraLocationIndex` alongside the selected location and
   // swaps the sheet's detail fields to that branch. Mobile listed branches as
   // flat muted text with no selection at all.
-  const [branchesOpen, setBranchesOpen] = useState(false);
-  const [branchIndex, setBranchIndex] = useState<number | null>(null);
+  const [branchesOpen, setBranchesOpen] = useState(initialBranchIndex !== null);
+  const [branchIndex, setBranchIndex] = useState<number | null>(
+    initialBranchIndex,
+  );
   const branches = place.extraLocations ?? [];
   const activeBranch = branchIndex === null ? null : branches[branchIndex];
 
@@ -377,7 +384,10 @@ export function LocationSheet({
             ) : null}
           </View>
         ) : null}
-        {(place.acceptedSubtypes ?? []).length > 0 ? (
+        {campaign ? (
+          // Events use web's lime chip block rather than a plain text list.
+          <EventMaterialBlock materials={place.materials} />
+        ) : (place.acceptedSubtypes ?? []).length > 0 ? (
           <Text variant="caption" muted>
             Accepted: {(place.acceptedSubtypes ?? []).slice(0, 5).join(', ')}
           </Text>

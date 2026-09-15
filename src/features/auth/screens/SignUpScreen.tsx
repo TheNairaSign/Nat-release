@@ -64,6 +64,9 @@ export function SignUpScreen({ query = {} }: { query?: SignUpQuery }) {
     try {
       const session = await signUp(http, {
         ...form.fields,
+        // web: `city: signupData.city.trim()` (Signup.tsx). The server trims
+        // too, so this is parity rather than a fix — but keep them identical.
+        city: form.fields.city.trim(),
         referralId: form.referralId,
         acceptedTerms: true,
       });

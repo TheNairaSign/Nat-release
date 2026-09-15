@@ -20,7 +20,6 @@ export {
   monthHeatWeeks,
   sinceLabel,
   uniqueActiveDays,
-  yearHeatCells,
   yearHeatRows,
   parseRegularActivity,
   parseSimpleActivity,
