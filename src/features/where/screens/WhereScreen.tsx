@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,6 +9,7 @@ import {
   createDropoffHref,
   directionsUrl,
   filterPlaces,
+  haversineKm,
   markerSizeForZoom,
   markerSpecForPlace,
   pickPlaceById,
@@ -85,6 +86,12 @@ export function WhereScreen({
   const [hasGps, setHasGps] = useState(false);
   const [zoom, setZoom] = useState(12);
   const [reminderPending, setReminderPending] = useState(false);
+  /** One-shot fly-to-closest after homepage/chip material select. */
+  const [materialFocus, setMaterialFocus] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const materialFocusKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -173,7 +180,40 @@ export function WhereScreen({
   const pick = useCallback((place: WherePlace | null) => {
     setPicked(place);
     setBranchFocus(null);
+    if (place) setMaterialFocus(null);
   }, []);
+
+  // Homepage Find Where / chip select: zoom to nearest matching place once.
+  useEffect(() => {
+    if (!selectedMaterial) {
+      materialFocusKeyRef.current = null;
+      setMaterialFocus(null);
+      return;
+    }
+    if (placesQuery.isPending || !placesQuery.data?.length) return;
+    if (picked !== undefined && picked !== null) return;
+
+    const focusKey = `${selectedMaterial}|${origin.latitude.toFixed(3)}|${origin.longitude.toFixed(3)}`;
+    if (materialFocusKeyRef.current === focusKey) return;
+
+    const nearest = [...placesQuery.data].sort(
+      (a, b) =>
+        haversineKm(origin.latitude, origin.longitude, a.lat, a.lng) -
+        haversineKm(origin.latitude, origin.longitude, b.lat, b.lng),
+    )[0];
+    if (!nearest) return;
+
+    materialFocusKeyRef.current = focusKey;
+    setMaterialFocus({ lat: nearest.lat, lng: nearest.lng });
+    setZoom(14);
+  }, [
+    selectedMaterial,
+    placesQuery.isPending,
+    placesQuery.data,
+    origin.latitude,
+    origin.longitude,
+    picked,
+  ]);
 
   const camera = useMemo(() => {
     // A branch chosen inside the location sheet wins over the place itself,
@@ -181,10 +221,14 @@ export function WhereScreen({
     if (branchFocus) {
       return { latitude: branchFocus.lat, longitude: branchFocus.lng };
     }
-    return selected
-      ? { latitude: selected.lat, longitude: selected.lng }
-      : origin;
-  }, [branchFocus, selected, origin]);
+    if (selected) {
+      return { latitude: selected.lat, longitude: selected.lng };
+    }
+    if (materialFocus) {
+      return { latitude: materialFocus.lat, longitude: materialFocus.lng };
+    }
+    return origin;
+  }, [branchFocus, selected, materialFocus, origin]);
   const cameraZoom = selected ? 16 : zoom;
 
   async function onRecord(place: WherePlace) {
@@ -279,6 +323,7 @@ export function WhereScreen({
             onSelectMaterial={(material) => {
               setMaterialOverride(material);
               pick(null);
+              materialFocusKeyRef.current = null;
               if (material) setPlatform('all');
             }}
             searchOpen={searchOpen}
