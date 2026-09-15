@@ -58,6 +58,7 @@ export function LocationSheet({
 }) {
   const theme = useTheme();
   const [descOpen, setDescOpen] = useState(false);
+  const [hoursOpen, setHoursOpen] = useState(false);
   // Web keeps `selectedExtraLocationIndex` alongside the selected location and
   // swaps the sheet's detail fields to that branch. Mobile listed branches as
   // flat muted text with no selection at all.
@@ -92,6 +93,13 @@ export function LocationSheet({
     : !long || descOpen
       ? description
       : `${description.slice(0, 140).trimEnd()}…`;
+  const hoursText = !campaign ? place.hours?.trim() ?? '' : '';
+  const hoursLong = hoursText.length > 90;
+  const hoursShown = !hoursText
+    ? ''
+    : !hoursLong || hoursOpen
+      ? hoursText
+      : `${hoursText.slice(0, 90).trimEnd()}…`;
   const images = place.images ?? [];
   // Campaign sheets already show a full-bleed header image, so the thumbnail
   // strip is for the non-campaign sheets only.
@@ -384,6 +392,26 @@ export function LocationSheet({
             ) : null}
           </View>
         ) : null}
+        {hoursShown ? (
+          <View>
+            <Text variant="small" muted>
+              {hoursShown}
+            </Text>
+            {hoursLong ? (
+              <Pressable onPress={() => setHoursOpen((open) => !open)}>
+                <Text
+                  variant="small"
+                  style={{
+                    fontFamily: theme.font.semibold,
+                    textDecorationLine: 'underline',
+                  }}
+                >
+                  {hoursOpen ? 'less' : 'more'}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
         {campaign ? (
           // Events use web's lime chip block rather than a plain text list.
           <EventMaterialBlock materials={place.materials} />
@@ -496,7 +524,7 @@ export function LocationSheet({
                 color: theme.color.accentText,
               }}
             >
-              {reminderPending ? 'Sending…' : 'Email reminder'}
+              {reminderPending ? 'Saving…' : 'Remind me'}
             </Text>
           </Pressable>
         ) : null}

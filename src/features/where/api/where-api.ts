@@ -249,6 +249,12 @@ export async function fetchWherePlaces(
           typeof raw.displayTag === 'string' && raw.displayTag
             ? raw.displayTag
             : 'Drop-off',
+        description:
+          typeof raw.description === 'string' ? raw.description : undefined,
+        hours:
+          typeof raw.operatingHours === 'string'
+            ? raw.operatingHours
+            : undefined,
         images: imagesOf(raw.locationImages),
         acceptedSubtypes: subtypes,
         platformClass:
