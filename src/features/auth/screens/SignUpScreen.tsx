@@ -25,10 +25,13 @@ import {
 import { readHttpErrorMessage } from '@/shared/api/errors';
 import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
-import { BrandLogo, Text } from '@/shared/ui';
+import { BrandLogo, Text, ThingsMatchMark } from '@/shared/ui';
 import { PRIVACY_URL, TERMS_URL } from '@/shared/config/legalUrls';
 
 const THINGSMATCH_APP = 'https://thingsmatch.com/app';
+const AUTH_INK = '#140a25';
+const AUTH_MUTED = '#9CA3AF';
+const AUTH_LIME_SOFT = '#E8F9A8';
 
 export type SignUpQuery = {
   referral?: string;
@@ -90,10 +93,55 @@ export function SignUpScreen({ query = {} }: { query?: SignUpQuery }) {
 
   return (
     <AuthPage topRatio={theme.layout.signUpTopRatio}>
+      {wantsThingsMatchFlow(query) ? (
+        <View
+          style={{
+            backgroundColor: AUTH_LIME_SOFT,
+            borderRadius: 18,
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            marginBottom: theme.space[4],
+            alignItems: 'center',
+          }}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <ThingsMatchMark />
+            <Text
+              style={{
+                fontSize: 13,
+                fontFamily: theme.font.medium,
+                color: AUTH_INK,
+              }}
+            >
+              ThingsMatch{' '}
+              <Text style={{ fontFamily: theme.font.regular, color: AUTH_MUTED }}>
+                by Natcycle
+              </Text>
+            </Text>
+          </View>
+          <Text
+            style={{
+              marginTop: 6,
+              fontSize: 12,
+              lineHeight: 16,
+              color: AUTH_INK,
+              textAlign: 'center',
+            }}
+          >
+            Is a product of Natcycle Inc. Create your natcycle account to use it.
+          </Text>
+        </View>
+      ) : null}
       <BrandLogo
         style={{
           alignSelf: 'center',
-          marginBottom: theme.layout.illustrationMarginBottom,
+          marginBottom: theme.space[3],
         }}
       />
       <Text
@@ -102,9 +150,10 @@ export function SignUpScreen({ query = {} }: { query?: SignUpQuery }) {
           textAlign: 'center',
           letterSpacing: -0.55,
           marginBottom: theme.space[5],
+          color: '#140a25',
         }}
       >
-        {t('createAccount')}
+        NatCycle Sign Up
       </Text>
 
       {error ? (
