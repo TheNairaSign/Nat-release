@@ -233,3 +233,51 @@ export function searchMaterialTypes(
   if (!q) return [];
   return materialTypes.filter((type) => type.toLowerCase().includes(q));
 }
+
+export type WherePin = {
+  /** Stable marker key: `<placeId>` for the main site, `<placeId>::<i>` for a branch. */
+  key: string;
+  placeId: string;
+  /** null for the main site, otherwise the index into `extraLocations`. */
+  branchIndex: number | null;
+  lat: number;
+  lng: number;
+  inactive: boolean;
+};
+
+/**
+ * One pin per site **and one per branch**, mirroring WhereMapbox.tsx, which
+ * pushes a `simple-<id>-main` marker and then a `simple-<id>-extra-<i>`
+ * marker for every entry in `extraLocations`.
+ *
+ * Mobile previously drew only the main site. Against production data around
+ * Port Harcourt that was 39 pins where web drew 304 — 13 locations carry 265
+ * branches between them — which is why the map looked nearly empty.
+ *
+ * A branch is inactive when either it or its parent is (web's
+ * `extraInactive`). Branches only exist on simple drop-off locations.
+ */
+export function wherePins(places: WherePlace[]): WherePin[] {
+  const pins: WherePin[] = [];
+  for (const place of places) {
+    pins.push({
+      key: place.id,
+      placeId: place.id,
+      branchIndex: null,
+      lat: place.lat,
+      lng: place.lng,
+      inactive: place.isActive === false,
+    });
+    (place.extraLocations ?? []).forEach((branch, index) => {
+      pins.push({
+        key: `${place.id}::${index}`,
+        placeId: place.id,
+        branchIndex: index,
+        lat: branch.lat,
+        lng: branch.lng,
+        inactive: place.isActive === false || branch.isActive === false,
+      });
+    });
+  }
+  return pins;
+}

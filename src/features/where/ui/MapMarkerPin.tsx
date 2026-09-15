@@ -10,6 +10,26 @@ import { MaterialGlyph } from '@/shared/ui/icons/materialGlyphRegistry';
  * white 20% hairline border, material glyph centred inside, coloured drop-glow,
  * an optional highlight ring, and the secondary-material badge bottom-right.
  */
+/**
+ * The three shadow states from web's IconEngine, verbatim:
+ *   ended/inactive — faint bevel, neutral 8px drop
+ *   highlighted    — stronger bevel, 22px coloured glow at 0.65
+ *   default        — bevel, 14px coloured glow at 0.50
+ */
+export function markerShadow(
+  glowRgb: string,
+  highlighted: boolean,
+  ended: boolean,
+): string {
+  if (ended) {
+    return 'inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 8px rgba(0,0,0,0.12)';
+  }
+  if (highlighted) {
+    return `inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -2px 4px rgba(0,0,0,0.38), 0 8px 22px rgba(${glowRgb},0.65), 0 2px 6px rgba(0,0,0,0.18)`;
+  }
+  return `inset 0 1px 0 rgba(255,255,255,0.16), inset 0 -2px 3px rgba(0,0,0,0.30), 0 5px 14px rgba(${glowRgb},0.50), 0 1px 4px rgba(0,0,0,0.14)`;
+}
+
 export function MapMarkerPin({ spec }: { spec: MarkerSpec }) {
   const { color, shape, width, height, opacity, showRing, secondary } = spec;
   const radius = markerRadius(shape, width, height);
@@ -48,12 +68,14 @@ export function MapMarkerPin({ spec }: { spec: MarkerSpec }) {
           borderColor: 'rgba(255,255,255,0.2)',
           alignItems: 'center',
           justifyContent: 'center',
-          // Coloured glow, matching the web box-shadow's rgba(glowRgb, .5)
-          shadowColor: `rgb(${color.glowRgb})`,
-          shadowOpacity: showRing ? 0.65 : 0.5,
-          shadowRadius: showRing ? 11 : 7,
-          shadowOffset: { width: 0, height: showRing ? 8 : 5 },
-          elevation: showRing ? 8 : 5,
+          // Web's exact box-shadow (IconEngine.tsx). The two `inset` layers are
+          // a top highlight and a bottom shade — the bevel that makes a pin
+          // read as a raised button. Android's `elevation` gave only a flat
+          // grey drop with no bevel and no colour, which is why markers looked
+          // "flattened" and stacked pins were indistinguishable. RN's native
+          // boxShadow (New Architecture) renders this on iOS and Android, and
+          // react-native-web passes it through as CSS.
+          boxShadow: markerShadow(color.glowRgb, showRing, opacity < 1),
         }}
       >
         <MaterialGlyph
@@ -76,11 +98,9 @@ export function MapMarkerPin({ spec }: { spec: MarkerSpec }) {
             backgroundColor: '#ffffff',
             alignItems: 'center',
             justifyContent: 'center',
-            shadowColor: '#000',
-            shadowOpacity: 0.2,
-            shadowRadius: 3,
-            shadowOffset: { width: 0, height: 1 },
-            elevation: 3,
+            // web: `shadow-md` on the secondary-material badge
+            boxShadow:
+              '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
           }}
         >
           <View

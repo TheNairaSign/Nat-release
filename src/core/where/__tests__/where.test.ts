@@ -8,6 +8,8 @@ import {
   searchTypeLabel,
   type WherePlace,
   getCampaignPhase,
+  wherePins,
+  type WhereBranch,
 } from '@/core/where';
 
 describe('where hrefs and filters', () => {
@@ -190,5 +192,64 @@ describe('campaign day keys (timezone)', () => {
     expect(
       getCampaignPhase({ startDate: '2026-09-01', endDate: '2026-09-02' }, now),
     ).toBe('ended');
+  });
+});
+
+describe('wherePins', () => {
+  const site = (over: Partial<WherePlace>): WherePlace => ({
+    kind: 'simple',
+    id: 's1',
+    name: 'Hub',
+    lat: 4.8,
+    lng: 7.0,
+    materials: ['plastic'],
+    record: true,
+    ...over,
+  });
+  const branch = (over: Partial<WhereBranch> = {}): WhereBranch => ({
+    name: 'Branch',
+    lat: 4.9,
+    lng: 7.1,
+    isActive: true,
+    ...over,
+  });
+
+  it('draws a pin for the site and one for every branch', () => {
+    // Regression: mobile drew only the main site — 39 pins where web drew 304
+    // against production data around Port Harcourt.
+    const pins = wherePins([
+      site({ extraLocations: [branch(), branch(), branch()] }),
+    ]);
+    expect(pins).toHaveLength(4);
+    expect(pins.map((p) => p.branchIndex)).toEqual([null, 0, 1, 2]);
+  });
+
+  it('places each branch pin at the branch, not the parent', () => {
+    const [, first] = wherePins([
+      site({ extraLocations: [branch({ lat: 5.5, lng: 8.5 })] }),
+    ]);
+    expect(first).toMatchObject({ lat: 5.5, lng: 8.5 });
+  });
+
+  it('gives every pin a unique key', () => {
+    const pins = wherePins([
+      site({ id: 'a', extraLocations: [branch(), branch()] }),
+      site({ id: 'b', extraLocations: [branch()] }),
+    ]);
+    expect(new Set(pins.map((p) => p.key)).size).toBe(pins.length);
+  });
+
+  it('greys a branch when either it or its parent is inactive', () => {
+    const pins = wherePins([
+      site({ extraLocations: [branch({ isActive: false }), branch()] }),
+      site({ id: 'off', isActive: false, extraLocations: [branch()] }),
+    ]);
+    expect(pins.find((p) => p.key === 's1::0')?.inactive).toBe(true);
+    expect(pins.find((p) => p.key === 's1::1')?.inactive).toBe(false);
+    expect(pins.find((p) => p.key === 'off::0')?.inactive).toBe(true);
+  });
+
+  it('leaves places without branches as a single pin', () => {
+    expect(wherePins([site({ extraLocations: undefined })])).toHaveLength(1);
   });
 });

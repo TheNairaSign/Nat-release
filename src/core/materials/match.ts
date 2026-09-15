@@ -10,7 +10,7 @@ export type LocationMaterialFields = {
   iconMaterialType?: string | null;
   bulkMaterialTypes?: string[] | null;
   materialTypes?: string[] | null;
-  materialPackageTags?: Array<{ material?: string | null } | null> | null;
+  materialPackageTags?: ({ material?: string | null } | null)[] | null;
 };
 
 const CANONICAL_ALIASES: Record<string, string[]> = {

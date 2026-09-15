@@ -13,6 +13,7 @@ export {
   searchMaterialTypes,
   searchOrganizations,
   searchPlaces,
+  wherePins,
   searchTypeLabel,
   type CampaignPhase,
   type MapPanelFocus,
@@ -20,6 +21,7 @@ export {
   type OrganizationResult,
   type WhereBranch,
   type WhereFilterId,
+  type WherePin,
   type WherePlace,
   type WherePlaceKind,
 } from './where';
