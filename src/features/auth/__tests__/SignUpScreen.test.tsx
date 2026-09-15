@@ -99,7 +99,7 @@ describe('SignUpScreen', () => {
 
     await waitFor(() => {
       expect(openUrl).toHaveBeenCalledWith(
-        'https://thingsmatch.com/app?token=tm-token',
+        'https://thingsmatch.com/auth/callback?token=tm-token',
       );
     });
     expect(replace).not.toHaveBeenCalled();

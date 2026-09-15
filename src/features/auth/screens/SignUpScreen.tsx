@@ -28,7 +28,7 @@ import { useTheme } from '@/shared/theme';
 import { BrandLogo, Text, ThingsMatchMark } from '@/shared/ui';
 import { PRIVACY_URL, TERMS_URL } from '@/shared/config/legalUrls';
 
-const THINGSMATCH_APP = 'https://thingsmatch.com/app';
+const THINGSMATCH_APP = 'https://thingsmatch.com/auth/callback';
 const AUTH_INK = '#140a25';
 const AUTH_MUTED = '#9CA3AF';
 const AUTH_LIME_SOFT = '#E8F9A8';

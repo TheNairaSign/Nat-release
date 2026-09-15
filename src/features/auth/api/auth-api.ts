@@ -7,8 +7,22 @@ import { assertOk } from '@/shared/api/errors';
 import type { HttpClient } from '@/shared/ports/http';
 
 const thingsMatchTokenSchema = z
-  .object({ token: z.string().min(1) })
+  .object({
+    token: z.string().min(1).optional(),
+    data: z
+      .object({
+        token: z.string().min(1).optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
   .passthrough();
+
+function readThingsMatchToken(body: unknown): string | null {
+  const parsed = thingsMatchTokenSchema.safeParse(body);
+  if (!parsed.success) return null;
+  return parsed.data.token || parsed.data.data?.token || null;
+}
 const resetTokenSchema = z
   .object({
     status: z.boolean(),
@@ -67,8 +81,7 @@ export async function fetchThingsMatchAccountToken(
   if (response.status < 200 || response.status >= 300) {
     return null;
   }
-  const parsed = thingsMatchTokenSchema.safeParse(response.body);
-  return parsed.success ? parsed.data.token : null;
+  return readThingsMatchToken(response.body);
 }
 
 export async function verifyEmail(
