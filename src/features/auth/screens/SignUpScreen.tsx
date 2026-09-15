@@ -78,7 +78,7 @@ export function SignUpScreen({ query = {} }: { query?: SignUpQuery }) {
         const tmToken = await fetchThingsMatchAccountToken(http, session.token);
         if (tmToken) {
           await linking.openUrl(
-            `${THINGSMATCH_APP}?token=${encodeURIComponent(tmToken)}`,
+            `${THINGSMATCH_APP}?token=${encodeURIComponent(tmToken)}&returnTo=${encodeURIComponent('/app')}`,
           );
           return;
         }
