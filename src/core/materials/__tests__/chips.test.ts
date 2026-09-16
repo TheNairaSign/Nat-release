@@ -6,13 +6,13 @@ import {
 } from '@/core/materials';
 
 describe('material chips', () => {
-  it('uses NatCycle chips only and collapses synonyms', () => {
+  it('merges NatCycle + ThingsMatch and collapses synonyms', () => {
     expect(
       mergeWhereMaterialChips(
         ['plastic', { category: 'Food', createdAt: '2024-01-01' }],
-        [{ name: 'Plastic' }, 'Fabrics'],
+        [{ name: 'Plastic' }, 'Fabrics', 'Furniture', 'Toys'],
       ),
-    ).toEqual(['plastic', 'Food']);
+    ).toEqual(['plastic', 'Food', 'Fabrics', 'Furniture', 'Toys']);
   });
 
   it('falls back when the API returns nothing', () => {

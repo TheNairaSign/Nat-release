@@ -47,13 +47,13 @@ describe('canonical materials (1A + 2A)', () => {
     ).toEqual([]);
   });
 
-  it('collapses aluminium into metal on chip row and ignores ThingsMatch merge', () => {
+  it('collapses aluminium into metal and merges ThingsMatch categories', () => {
     expect(
       sortMaterialCategories(['Glass', 'Aluminium', 'Metal', 'Plastic']),
     ).toEqual(['Plastic', 'Metal', 'Glass']);
     expect(
       mergeWhereMaterialChips(['Plastic', 'Glass'], ['Furniture', 'Toys']),
-    ).toEqual(['Plastic', 'Glass']);
+    ).toEqual(['Plastic', 'Glass', 'Furniture', 'Toys']);
   });
 
   it('matches tires / drugs / hazardous aliases', () => {

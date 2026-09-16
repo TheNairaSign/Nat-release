@@ -91,12 +91,15 @@ export function sortMaterialCategories(
   return [...plastic, ...rest, ...passthrough];
 }
 
-/** Where chips are NatCycle-only; ThingsMatch arg ignored. */
+/** Merge NatCycle + ThingsMatch into one ordered chip list. */
 export function mergeWhereMaterialChips(
   materials: MaterialChipInput[],
-  _thingsMatch?: MaterialChipInput[],
+  thingsMatch?: MaterialChipInput[],
 ): string[] {
-  return sortMaterialCategories(materials);
+  return sortMaterialCategories([
+    ...(materials || []),
+    ...(thingsMatch || []),
+  ]);
 }
 
 export function disposeChipsOrFallback(chips: string[]): string[] {
