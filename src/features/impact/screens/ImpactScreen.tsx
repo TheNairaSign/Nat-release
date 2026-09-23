@@ -57,7 +57,13 @@ export function ImpactScreen() {
     user?.itemsCount ?? {},
     catalogQuery.data?.types ?? [],
     catalogQuery.data?.materials ?? [],
-  ).filter((row) => row.totalDropoffs > 0 || row.totalQuantity > 0);
+  );
+  // No zero-row filter: web seeds every catalog material at zero and renders
+  // `materialContributions.slice(0, 4)` unfiltered (Impact.tsx), so materials
+  // you have not dropped off yet — glass, paper — still appear. Filtering them
+  // out left only materials with data, which is why the breakdown collapsed to
+  // a single card. The See-all screen never had this filter, which is why it
+  // still listed every type.
   const year = new Date().getFullYear();
   const counts = dayCounts(activities);
   const days = uniqueActiveDays(activities, year);
