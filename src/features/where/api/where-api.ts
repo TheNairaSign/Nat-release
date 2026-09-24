@@ -1,8 +1,6 @@
 import {
   displayMaterials,
   locationAcceptsCanonical,
-  sortMaterialCategories,
-  type MaterialChipInput,
 } from '@/core/materials';
 import {
   formatCampaignHours,
@@ -14,6 +12,7 @@ import {
   type WhereBranch,
   type WherePlace,
 } from '@/core/where';
+import { fetchDisposeChips } from '@/shared/api/dispose-chips';
 import type { HttpClient } from '@/shared/ports/http';
 
 export const whereChipsQueryKey = ['where', 'chips'] as const;
@@ -38,23 +37,10 @@ function unwrapList(body: unknown): unknown[] {
   return [];
 }
 
-function asChipInputs(raw: unknown[]): MaterialChipInput[] {
-  return raw.filter(
-    (item): item is MaterialChipInput =>
-      typeof item === 'string' || (Boolean(item) && typeof item === 'object'),
-  );
-}
-
 export async function fetchWhereChips(http: HttpClient): Promise<string[]> {
-  const materials = await http.request({
-    path: '/materials/primary-types',
-    method: 'GET',
-  });
-  let primary: MaterialChipInput[] = [];
-  if (materials.status < 300) {
-    primary = asChipInputs(unwrapList(materials.body));
-  }
-  return sortMaterialCategories(primary);
+  // Exact same fetch, merge and order as the home dispose card — web builds
+  // both rows from one helper (client/src/utils/disposeMaterialChips.ts).
+  return fetchDisposeChips(http);
 }
 
 function coordsOf(raw: unknown): { lng: number; lat: number } | null {

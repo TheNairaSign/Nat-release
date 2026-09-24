@@ -142,7 +142,7 @@ export function GreenImpactCard({
                 textAlign: 'center',
               }}
             >
-              Register to start saving Carbon Units and earn rewards!
+              Register to start saving Carbon Units
             </Text>
           ) : (
             <View

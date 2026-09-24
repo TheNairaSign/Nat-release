@@ -25,9 +25,7 @@ describe('HomeScreen', () => {
       expect(screen.getByText('Green Impact')).toBeTruthy();
     });
     expect(
-      screen.getByText(
-        'Register to start saving Carbon Units and earn rewards!',
-      ),
+      screen.getByText('Register to start saving Carbon Units'),
     ).toBeTruthy();
     expect(screen.getByText('Good Afternoon there!')).toBeTruthy();
     expect(screen.queryByText('Verify your email')).toBeNull();

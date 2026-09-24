@@ -39,7 +39,7 @@ function chipName(
   return { name, createdAt: rawCreated ? String(rawCreated) : null };
 }
 
-/** Sort NatCycle chips; collapse synonyms onto one label per canonical id. */
+/** Sort NatCycle chips; case-insensitive dedupe only (no synonym families). */
 export function sortMaterialCategories(
   categories: MaterialChipInput[],
 ): string[] {
@@ -91,15 +91,65 @@ export function sortMaterialCategories(
   return [...plastic, ...rest, ...passthrough];
 }
 
-/** Merge NatCycle + ThingsMatch into one ordered chip list. */
+function formatChipLabel(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return trimmed;
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+}
+
+/**
+ * Homepage dispose chips: merge NatCycle + ThingsMatch without synonym collapse.
+ * Exact-name dedupe only, then sort by createdAt ascending.
+ */
 export function mergeWhereMaterialChips(
   materials: MaterialChipInput[],
   thingsMatch?: MaterialChipInput[],
 ): string[] {
-  return sortMaterialCategories([
-    ...(materials || []),
-    ...(thingsMatch || []),
-  ]);
+  const combined = [...(materials || []), ...(thingsMatch || [])]
+    .map(chipName)
+    .filter(Boolean) as { name: string; createdAt: string | null }[];
+
+  const byKey = new Map<string, { name: string; createdAt: string | null }>();
+  for (const item of combined) {
+    const key = item.name.toLowerCase();
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, item);
+      continue;
+    }
+    const existingTime = existing.createdAt
+      ? new Date(existing.createdAt).getTime()
+      : Number.NaN;
+    const newTime = item.createdAt
+      ? new Date(item.createdAt).getTime()
+      : Number.NaN;
+    let createdAt = existing.createdAt;
+    if (Number.isFinite(newTime)) {
+      if (!Number.isFinite(existingTime) || newTime < existingTime) {
+        createdAt = item.createdAt;
+      }
+    }
+    const name =
+      item.name.length > existing.name.length ||
+      (/[A-Z]/.test(item.name.charAt(0)) &&
+        !/[A-Z]/.test(existing.name.charAt(0)))
+        ? item.name
+        : existing.name;
+    byKey.set(key, { name, createdAt });
+  }
+
+  const list = Array.from(byKey.values());
+  list.sort((a, b) => {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : Number.NaN;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : Number.NaN;
+    const aValid = Number.isFinite(aTime);
+    const bValid = Number.isFinite(bTime);
+    if (aValid && bValid && aTime !== bTime) return aTime - bTime;
+    if (aValid !== bValid) return aValid ? -1 : 1;
+    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+  });
+
+  return list.map((item) => formatChipLabel(item.name));
 }
 
 export function disposeChipsOrFallback(chips: string[]): string[] {

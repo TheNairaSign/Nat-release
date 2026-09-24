@@ -1,4 +1,6 @@
-import { fetchHomeProfile } from '../api/home-api';
+import { fetchDisposeChips as sharedDisposeChips } from '@/shared/api/dispose-chips';
+
+import { fetchDisposeChips, fetchHomeProfile } from '../api/home-api';
 
 const respond = (status: number, body: unknown) => ({
   request: async () => ({ status, body }),
@@ -56,5 +58,27 @@ describe('fetchHomeProfile', () => {
       carbonUnits: 0,
       ready: true,
     });
+  });
+});
+
+describe('fetchDisposeChips', () => {
+  // Home and Where must render one row, as they do on web. Re-implementing the
+  // fetch in either feature is how Where lost its ThingsMatch categories, so
+  // home must go through the shared source and hit both endpoints.
+  it('fetches NatCycle and ThingsMatch through the shared source', async () => {
+    const seen: string[] = [];
+    const http = {
+      request: async (input: { path: string }) => {
+        seen.push(input.path);
+        return input.path.includes('thingsmatch-categories')
+          ? { status: 200, body: { data: [{ category: 'books' }] } }
+          : { status: 200, body: { data: { categories: [{ category: 'Plastic' }] } } };
+      },
+    };
+    const chips = await fetchDisposeChips(http);
+    expect(seen.some((p) => p.includes('/materials/primary-types'))).toBe(true);
+    expect(seen.some((p) => p.includes('thingsmatch-categories'))).toBe(true);
+    expect(chips).toEqual(await sharedDisposeChips(http));
+    expect(chips).toEqual(['Books', 'Plastic']);
   });
 });

@@ -70,8 +70,9 @@ describe('material matching for Where chips', () => {
     );
   });
 
-  it('matches PET under plastic', () => {
-    expect(isMaterialTypeMatch('plastic', 'PET')).toBe(true);
+  it('does not match PET under plastic', () => {
+    expect(isMaterialTypeMatch('plastic', 'PET')).toBe(false);
+    expect(isMaterialTypeMatch('PET', 'PET')).toBe(true);
   });
 });
 

@@ -6,13 +6,30 @@ import {
 } from '@/core/materials';
 
 describe('material chips', () => {
-  it('merges NatCycle + ThingsMatch and collapses synonyms', () => {
+  it('merges NatCycle + ThingsMatch without collapsing TM into diversion synonyms', () => {
     expect(
       mergeWhereMaterialChips(
-        ['plastic', { category: 'Food', createdAt: '2024-01-01' }],
-        [{ name: 'Plastic' }, 'Fabrics', 'Furniture', 'Toys'],
+        [
+          { category: 'Plastic', createdAt: '2024-01-01' },
+          { category: 'Paper', createdAt: '2024-02-01' },
+          { category: 'Fabrics', createdAt: '2024-03-01' },
+        ],
+        [
+          { category: 'books', createdAt: '2025-10-29T10:43:35.075Z' },
+          { category: 'clothes', createdAt: '2025-10-29T10:43:49.113Z' },
+          { category: 'shoes', createdAt: '2025-10-29T10:44:05.696Z' },
+          { category: 'electronics', createdAt: '2025-10-29T10:44:31.115Z' },
+        ],
       ),
-    ).toEqual(['plastic', 'Food', 'Fabrics', 'Furniture', 'Toys']);
+    ).toEqual([
+      'Plastic',
+      'Paper',
+      'Fabrics',
+      'Books',
+      'Clothes',
+      'Shoes',
+      'Electronics',
+    ]);
   });
 
   it('falls back when the API returns nothing', () => {
@@ -28,24 +45,17 @@ describe('material chips', () => {
   });
 });
 
-describe('material aliases added on web (d89313a)', () => {
-  it('matches tyre spellings against a "Tires" filter', () => {
-    expect(isMaterialTypeMatch('tires', 'tyre')).toBe(true);
-    expect(isMaterialTypeMatch('tire', 'tyres')).toBe(true);
+describe('material matching is direct (no aliases)', () => {
+  it('does not match tyre / drug / hazardous synonyms', () => {
+    expect(isMaterialTypeMatch('tires', 'tyre')).toBe(false);
+    expect(isMaterialTypeMatch('tire', 'tyres')).toBe(false);
+    expect(isMaterialTypeMatch('drugs', 'medication')).toBe(false);
+    expect(isMaterialTypeMatch('hazardous', 'biohazard')).toBe(false);
   });
 
-  it('matches drug synonyms against a "Drugs" filter', () => {
-    expect(isMaterialTypeMatch('drugs', 'medication')).toBe(true);
-    expect(isMaterialTypeMatch('drug', 'capsules')).toBe(true);
-  });
-
-  it('matches hazardous synonyms', () => {
-    expect(isMaterialTypeMatch('hazardous', 'biohazard')).toBe(true);
-    expect(isMaterialTypeMatch('hazardous', 'toxic')).toBe(true);
-  });
-
-  it('does not over-match unrelated materials', () => {
+  it('matches only the exact name (case-insensitive)', () => {
+    expect(isMaterialTypeMatch('tires', 'tires')).toBe(true);
+    expect(isMaterialTypeMatch('Tires', 'tires')).toBe(true);
     expect(isMaterialTypeMatch('tires', 'glass')).toBe(false);
-    expect(isMaterialTypeMatch('drugs', 'paper')).toBe(false);
   });
 });

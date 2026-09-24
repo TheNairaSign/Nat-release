@@ -548,6 +548,35 @@ Checked against `server/src/models` before implementing:
 Still client-only and unimplemented: the AI chat completed-action state and the
 ThingsMatch action badge, which need `AiMessage`/`AiTool` to grow fields.
 
+## One dispose-chip source (Home + Where)
+
+Web builds the homepage dispose row and the Where material row from a single
+helper, `client/src/utils/disposeMaterialChips.ts`, so the two rows always carry
+the same labels in the same order — NatCycle `/materials/primary-types` merged
+with the ThingsMatch categories, sorted by `createdAt`.
+
+Mobile had two implementations: Home merged both sources, Where fetched only
+`/materials/primary-types`. Every ThingsMatch category the homepage offered —
+books, clothes, shoes, electronics — was missing from the map's chip row.
+
+`src/shared/api/dispose-chips.ts` is now the single source, mirroring the web
+util, and both features call it. It lives in `shared/` rather than in one
+feature so the other does not have to reach across the feature boundary.
+
+Checked against the live guest dashboard, which renders
+`Plastic · Paper · Fabrics · Books · Clothes · Shoes`.
+
+## Material matching is by name, not by synonym family
+
+Both codebases dropped the alias tables (`plastic` ⊃ PET/HDPE, `metal` ⊃
+aluminium, `ewaste` ⊃ battery). `toCanonicalMaterialId` is now just
+normalisation, and a location matches a chip only when it lists that exact name,
+case-insensitively. A chip for a material added in the admin portal — Paint,
+Battery — therefore works with no code change, which was the point.
+
+Guest copy is `Register to start saving Carbon Units`: no trailing `!`, and not
+the older "and earn rewards!".
+
 ## Running the app on web
 
 `@rnmapbox/maps` is the only dependency in `src/` with no web implementation,

@@ -1,10 +1,7 @@
 import { z } from 'zod';
 
-import {
-  mergeWhereMaterialChips,
-  type MaterialChipInput,
-} from '@/core/materials';
 import { pickRandomSlice } from '@/core/home';
+import { fetchDisposeChips } from '@/shared/api/dispose-chips';
 import { unwrapDataObject } from '@/shared/api/unwrap';
 import { getEnv } from '@/shared/config/env';
 import type { HttpClient } from '@/shared/ports/http';
@@ -34,32 +31,6 @@ export type HomeSuggestion = {
   id: string;
   text: string;
 };
-
-function unwrapList(body: unknown): unknown[] {
-  if (Array.isArray(body)) return body;
-  if (!body || typeof body !== 'object') return [];
-  const root = body as Record<string, unknown>;
-  if (Array.isArray(root.categories)) return root.categories;
-  if (Array.isArray(root.primaryTypes)) return root.primaryTypes;
-  if (Array.isArray(root.data)) return root.data;
-  const nested = root.data;
-  if (nested && typeof nested === 'object') {
-    const data = nested as Record<string, unknown>;
-    if (Array.isArray(data.categories) && data.categories.length > 0) {
-      return data.categories;
-    }
-    if (Array.isArray(data.primaryTypes)) return data.primaryTypes;
-    if (Array.isArray(data.data)) return data.data;
-  }
-  return [];
-}
-
-function asChipInputs(raw: unknown[]): MaterialChipInput[] {
-  return raw.filter(
-    (item): item is MaterialChipInput =>
-      typeof item === 'string' || (Boolean(item) && typeof item === 'object'),
-  );
-}
 
 export async function fetchHomeProfile(http: HttpClient): Promise<HomeProfile> {
   const response = await http.request({ path: '/profile', method: 'GET' });
@@ -95,30 +66,7 @@ export async function fetchHomeProfile(http: HttpClient): Promise<HomeProfile> {
   };
 }
 
-export async function fetchDisposeChips(http: HttpClient): Promise<string[]> {
-  const env = getEnv();
-  const [materials, thingsMatch] = await Promise.allSettled([
-    http.request({ path: '/materials/primary-types', method: 'GET' }),
-    http.request({
-      path: `${env.ursApiUrl}/platforms/natcycle/thingsmatch-categories`,
-      method: 'GET',
-      headers: { 'X-API-Key': env.ursApiKey },
-      token: '',
-    }),
-  ]);
-
-  let primary: MaterialChipInput[] = [];
-  let tm: MaterialChipInput[] = [];
-
-  if (materials.status === 'fulfilled' && materials.value.status < 300) {
-    primary = asChipInputs(unwrapList(materials.value.body));
-  }
-  if (thingsMatch.status === 'fulfilled' && thingsMatch.value.status < 300) {
-    tm = asChipInputs(unwrapList(thingsMatch.value.body));
-  }
-
-  return mergeWhereMaterialChips(primary, tm);
-}
+export { fetchDisposeChips };
 
 const suggestionSchema = z.object({
   _id: z.string(),

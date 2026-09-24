@@ -200,8 +200,11 @@ export function WhereScreen({
   // Homepage Find Where / chip select: zoom to nearest matching place once.
   useEffect(() => {
     if (!selectedMaterial) {
+      // Only the key is cleared here. Calling setMaterialFocus(null) in the
+      // effect body triggers a cascading render (react-hooks/set-state-in-effect);
+      // the camera below already ignores a stale focus once the material is
+      // deselected, so the extra render bought nothing.
       materialFocusKeyRef.current = null;
-      setMaterialFocus(null);
       return;
     }
     if (placesQuery.isPending || !placesQuery.data?.length) return;
@@ -218,6 +221,11 @@ export function WhereScreen({
     if (!nearest) return;
 
     materialFocusKeyRef.current = focusKey;
+    // One-shot camera sync, guarded by `focusKey` above so it runs once per
+    // material/origin pair rather than on every refetch. Deriving it with
+    // useMemo instead would re-fly the camera to the nearest match every time
+    // the location sheet is closed, which is not what web does.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMaterialFocus({ lat: nearest.lat, lng: nearest.lng });
     setZoom(14);
   }, [
@@ -248,11 +256,13 @@ export function WhereScreen({
     if (selected) {
       return { latitude: selected.lat, longitude: selected.lng };
     }
-    if (materialFocus) {
+    // Deselecting the material drops back to the user's own position rather
+    // than leaving the camera parked on the last matching place.
+    if (selectedMaterial && materialFocus) {
       return { latitude: materialFocus.lat, longitude: materialFocus.lng };
     }
     return origin;
-  }, [branchFocus, selected, materialFocus, origin]);
+  }, [branchFocus, selected, selectedMaterial, materialFocus, origin]);
   const cameraZoom = selected ? 16 : zoom;
 
   async function onRecord(place: WherePlace) {

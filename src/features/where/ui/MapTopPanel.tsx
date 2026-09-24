@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Dimensions, Pressable, ScrollView, View } from 'react-native';
 
 import { capitalizeChip } from '@/core/materials';
@@ -78,6 +78,31 @@ export function MapTopPanel({
   // carousel is locked, so the swipe scrolls the materials rather than paging
   // the card.
   const [chipGesture, setChipGesture] = useState(false);
+  const chipScrollRef = useRef<ScrollView>(null);
+  // Chip x-offsets live in state, not a ref, so the scroll effect re-runs when
+  // a chip is measured after the selection was already set. Holding them in a
+  // ref meant the effect could run before `onLayout` and then never again.
+  const [chipOffsets, setChipOffsets] = useState<Record<string, number>>({});
+  // Guards the auto-scroll so it fires once per selection. `onLayout` fires on
+  // every layout pass, so scrolling from there yanked the row back to the
+  // selected chip whenever the card re-laid out under the user's finger.
+  const scrolledForRef = useRef<string | null>(null);
+
+  // Web's chip row (WhereMapbox.tsx) is a plain `overflow-x-auto` strip with no
+  // scroll-into-view: on a wide screen every chip is visible. On a phone the
+  // material picked on Home is usually off-screen, so bring it into view.
+  useEffect(() => {
+    if (!selectedMaterial) {
+      scrolledForRef.current = null;
+      return;
+    }
+    if (chipsLoading) return;
+    if (scrolledForRef.current === selectedMaterial) return;
+    const x = chipOffsets[selectedMaterial];
+    if (x == null) return;
+    scrolledForRef.current = selectedMaterial;
+    chipScrollRef.current?.scrollTo({ x: Math.max(0, x - 24), animated: true });
+  }, [selectedMaterial, chipsLoading, chipOffsets]);
 
   return (
     <View>
@@ -206,6 +231,7 @@ export function MapTopPanel({
                     gesture and a chip swipe slides the whole card instead —
                     you could never scroll past the first few materials. */}
                 <ScrollView
+                  ref={chipScrollRef}
                   horizontal
                   nestedScrollEnabled
                   directionalLockEnabled
@@ -237,6 +263,15 @@ export function MapTopPanel({
                           <Pressable
                             key={chip}
                             testID={`where-chip-${chip}`}
+                            onLayout={(event) => {
+                              if (!value) return;
+                              const { x } = event.nativeEvent.layout;
+                              setChipOffsets((prev) =>
+                                prev[value] === x
+                                  ? prev
+                                  : { ...prev, [value]: x },
+                              );
+                            }}
                             onPress={() => {
                               onFocus('points');
                               onSelectMaterial(value);
