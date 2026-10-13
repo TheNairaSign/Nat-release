@@ -1,4 +1,5 @@
 import { Image, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   AI_WELCOME_CHIPS,
@@ -13,6 +14,7 @@ import { Text } from '@/shared/ui';
 import { ChevronGlyph } from '@/shared/ui/icons/glyphs';
 import { MoreVerticalGlyph } from '@/shared/ui/icons/featherGlyphs';
 import { PaperPlaneGlyph } from '@/shared/ui/icons/materialGlyphs';
+import { ThingsMatchGlyph } from '@/shared/ui/icons/thingsMatchGlyph';
 
 import { TypingDots } from './TypingDots';
 
@@ -46,17 +48,25 @@ export function AiChatPanel({
   onBack?: () => void;
 }) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const name = greetingName(firstName);
   const canSend = !pending && draft.trim().length > 0;
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Header: 36px logo, 17px "Diva" + Beta chip, subtitle beside it */}
+      {/* Header: 36px logo, 17px "Diva" + Beta chip, subtitle beside it.
+          Web pads each section itself (`px-4 py-3`, and
+          `pt-[max(0.75rem,env(safe-area-inset-top))]`) rather than putting one
+          gutter around the whole panel — which is why the header and composer
+          used to sit flush against the top and bottom edges. */}
       <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
           gap: 10,
+          paddingHorizontal: 16,
+          paddingTop: Math.max(12, insets.top),
+          paddingBottom: 12,
         }}
       >
         {onBack ? (
@@ -144,8 +154,12 @@ export function AiChatPanel({
       </View>
 
       <ScrollView
-        style={{ flex: 1, marginTop: 16 }}
-        contentContainerStyle={{ paddingBottom: 16, gap: 12 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          gap: 12,
+        }}
       >
         {messages.length === 0 ? (
           // Web centres the whole welcome block and leads with a 64px logo;
@@ -290,11 +304,19 @@ export function AiChatPanel({
                           style={{
                             backgroundColor: AI_GREEN_DARK,
                             borderRadius: theme.radius.pill,
-                            // web: px-5 py-2.5
+                            // web: px-5 py-2.5, inline-flex items-center gap-2
                             paddingHorizontal: 20,
                             paddingVertical: 10,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 8,
                           }}
                         >
+                          {/* Web marks a ThingsMatch hand-off with the TM logo
+                              in white before the label. */}
+                          {action.isTm ? (
+                            <ThingsMatchGlyph color="#ffffff" />
+                          ) : null}
                           <Text
                             style={{
                               fontSize: 14,
@@ -361,64 +383,75 @@ export function AiChatPanel({
           turns brand green once there is something to send. */}
       <View
         style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          backgroundColor: '#F3F3F3',
-          borderRadius: theme.radius.pill,
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-          gap: 8,
+          paddingHorizontal: 16,
+          paddingTop: 8,
+          // Web floors this at 0.75rem so the composer never touches the screen
+          // edge on a device that reports no bottom inset.
+          paddingBottom: Math.max(12, insets.bottom),
+          backgroundColor: theme.color.surface,
         }}
       >
         <View
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: 16,
-            overflow: 'hidden',
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#F3F3F3',
+            borderRadius: theme.radius.pill,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            gap: 8,
           }}
         >
-          <Image
-            source={require('../../../../assets/images/natcycle-ai.png')}
-            style={{ width: '100%', height: '100%' }}
-            resizeMode="cover"
+          <View
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              overflow: 'hidden',
+            }}
+          >
+            <Image
+              source={require('../../../../assets/images/natcycle-ai.png')}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="cover"
+            />
+          </View>
+
+          <TextInput
+            testID="ai-draft"
+            value={draft}
+            onChangeText={onDraft}
+            placeholder="Ask Diva questions"
+            placeholderTextColor={theme.color.placeholder}
+            multiline
+            style={{
+              flex: 1,
+              color: theme.color.text,
+              fontSize: 15,
+              // web: min-h-[36px] max-h-28 py-1.5
+              minHeight: 36,
+              maxHeight: 112,
+              paddingVertical: 6,
+            }}
+            onSubmitEditing={onSend}
+            returnKeyType="send"
+            blurOnSubmit
           />
+
+          <Pressable
+            testID="ai-send"
+            onPress={onSend}
+            disabled={canSend === false}
+            accessibilityLabel="Send message"
+            hitSlop={6}
+            style={{ padding: 8, opacity: canSend ? 1 : 0.3 }}
+          >
+            <PaperPlaneGlyph
+              color={canSend ? AI_GREEN_DARK : '#CBD5E1'}
+              size={15}
+            />
+          </Pressable>
         </View>
-
-        <TextInput
-          testID="ai-draft"
-          value={draft}
-          onChangeText={onDraft}
-          placeholder="Ask Diva questions"
-          placeholderTextColor={theme.color.placeholder}
-          multiline
-          style={{
-            flex: 1,
-            color: theme.color.text,
-            fontSize: 15,
-            // web: min-h-[36px] max-h-28 py-1.5
-            minHeight: 36,
-            maxHeight: 112,
-            paddingVertical: 6,
-          }}
-          onSubmitEditing={onSend}
-          returnKeyType="send"
-          blurOnSubmit
-        />
-
-        <Pressable
-          testID="ai-send"
-          onPress={onSend}
-          disabled={canSend === false}
-          accessibilityLabel="Send message"
-          hitSlop={6}
-          style={{ padding: 8, opacity: canSend ? 1 : 0.3 }}
-        >
-          <PaperPlaneGlyph
-            color={canSend ? AI_GREEN_DARK : '#CBD5E1'}
-            size={15}
-          />
-        </Pressable>
       </View>
     </View>
   );

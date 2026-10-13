@@ -170,11 +170,20 @@ export function MapTopPanel({
                         fontSize: 20,
                         fontFamily: theme.font.bold,
                         color: theme.color.text,
+                        // web: leading-tight
+                        lineHeight: 25,
                       }}
                     >
                       Diversion Points
                     </Text>
-                    <Text variant="small" muted style={{ marginTop: 4 }}>
+                    {/* web: line-clamp-2 — without a cap a long subtitle grows
+                        the header and pushes the chip row out of the card. */}
+                    <Text
+                      variant="small"
+                      muted
+                      numberOfLines={2}
+                      style={{ marginTop: 4 }}
+                    >
                       Where to drop-off, recycle and more
                     </Text>
                   </View>
@@ -340,6 +349,9 @@ export function MapTopPanel({
                 fontFamily: theme.font.bold,
                 color: theme.color.text,
                 textAlign: 'center',
+                // web: leading-tight + tracking-tight on the centered variant
+                lineHeight: 27,
+                letterSpacing: -0.54,
               }}
             >
               Diversion Events
@@ -347,6 +359,7 @@ export function MapTopPanel({
             <Text
               variant="small"
               muted
+              numberOfLines={2}
               style={{ marginTop: 4, textAlign: 'center' }}
             >
               Campaigns and pop-up collections

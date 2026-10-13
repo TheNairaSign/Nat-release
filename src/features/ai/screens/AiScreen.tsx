@@ -2,13 +2,14 @@ import { useMemo, useState } from 'react';
 import {
   Dimensions,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   AI_CAPABILITIES,
@@ -197,8 +198,17 @@ export function AiScreen({
         presentationStyle="fullScreen"
         onRequestClose={() => setChatOpen(false)}
       >
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.color.surface }}>
-          <View style={{ flex: 1, paddingHorizontal: 16 }}>
+        {/* Web's chat is `fixed inset-0` and full-bleed: each section inside
+            pads itself and floors its own safe-area inset. A SafeAreaView plus
+            one 16px gutter here collapsed that into a single flat frame with no
+            vertical breathing room at all. */}
+        <View style={{ flex: 1, backgroundColor: theme.color.surface }}>
+          {/* The browser scrolls web's composer clear of the keyboard; native
+              will happily leave it underneath. Same behaviour as AuthPage. */}
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
             <AiChatPanel
               onBack={() => setChatOpen(false)}
               firstName={firstName}
@@ -226,13 +236,13 @@ export function AiScreen({
               }}
               onClear={() => setClearOpen(true)}
             />
-          </View>
+          </KeyboardAvoidingView>
           <ClearModal
             open={clearOpen}
             onClose={() => setClearOpen(false)}
             onClear={onClear}
           />
-        </SafeAreaView>
+        </View>
       </Modal>
     );
   }
