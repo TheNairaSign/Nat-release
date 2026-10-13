@@ -111,17 +111,21 @@ export function formatCampaignSchedule(
   const scheduleType = resolveScheduleType(campaign);
   if (scheduleType === 'dates' && keys.length > 0) {
     const today = toDayKey(now) ?? '';
+    // Only days still ahead count as "Next". Excluding today alone sent the
+    // schedule back round to an open day that had already passed
+    // (client f1bf428).
+    const future = keys.filter((key) => key > today);
     if (keys.includes(today)) {
-      const rest = keys.filter((key) => key !== today);
-      if (rest.length === 0) return 'Open today';
-      return `Open today · Next ${formatDay(rest[0] ?? today)}`;
+      if (future.length === 0) return 'Open today';
+      return `Open today · Next ${formatDay(future[0] ?? today)}`;
     }
-    const next = keys.find((key) => key > today);
+    const next = future[0];
     if (next) {
       if (keys.length === 1) return formatDay(next);
       return `${formatDay(next)} · ${keys.length} dates`;
     }
-    return keys.map(formatDay).join(' · ');
+    // Every date is behind us: name the last one instead of listing them all.
+    return `Ended · ${formatDay(keys[keys.length - 1] ?? today)}`;
   }
   const start = campaign.startDate
     ? new Date(campaign.startDate).toLocaleString(undefined, {
