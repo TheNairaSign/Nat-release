@@ -30,6 +30,7 @@ import {
   aiHistoryQueryKey,
   aiSuggestionsQueryKey,
 } from '../api/ai-api';
+import { takeDivaOpening } from '../opening';
 import { AiChatPanel } from '../ui/AiChatPanel';
 import { useSession } from '@/features/auth';
 import { allowanceQueryKey } from '@/features/tokens';
@@ -99,7 +100,23 @@ export function AiScreen({
     !SHOW_DIVA_LANDING || Boolean(initialQuestion),
   );
   const [draft, setDraft] = useState('');
-  const [localMessages, setLocalMessages] = useState<AiMessage[]>([]);
+  // "Ask Diva" on Home's food card: DiVA opens with the choices for the picked food.
+  // Nothing goes to the AI until one is picked (web AiChat initialOptions).
+  const [localMessages, setLocalMessages] = useState<AiMessage[]>(() => {
+    const opening = takeDivaOpening();
+    return opening
+      ? [
+          {
+            id: `opening-${Date.now()}`,
+            role: 'assistant',
+            text: opening.text,
+            timestamp: new Date().toISOString(),
+            options: opening.options,
+            optionContexts: opening.optionContexts,
+          },
+        ]
+      : [];
+  });
   const [pending, setPending] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
   const [activeSuggestionId, setActiveSuggestionId] = useState(suggestionId);
@@ -341,7 +358,11 @@ export function AiScreen({
                 }
               }}
               onOption={(option, message) => {
-                void send(option, undefined, message.context);
+                void send(
+                  option,
+                  undefined,
+                  message.optionContexts?.[option] ?? message.context,
+                );
               }}
               onClear={() => setClearOpen(true)}
             />

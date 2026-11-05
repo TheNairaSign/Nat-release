@@ -1,15 +1,15 @@
 import { z } from 'zod';
 
-import { pickRandomSlice } from '@/core/home';
+import { parseGroceryItem, soonestFirst, type GroceryItem } from '@/core/grocery';
 import { fetchDisposeChips } from '@/shared/api/dispose-chips';
-import { unwrapDataObject } from '@/shared/api/unwrap';
-import { getEnv } from '@/shared/config/env';
+import { unwrapDataObject, unwrapList } from '@/shared/api/unwrap';
 import type { HttpClient } from '@/shared/ports/http';
 
 const profileSchema = z
   .object({
     firstName: z.string().optional(),
     carbonUnits: z.union([z.number(), z.string()]).optional(),
+    homeCarbonUnits: z.union([z.number(), z.string()]).optional(),
     isEmailVerified: z.boolean().optional(),
     phoneNumber: z.string().nullable().optional(),
   })
@@ -25,12 +25,7 @@ export type HomeProfile = {
 
 export const homeProfileQueryKey = ['home', 'profile'] as const;
 export const homeMaterialsQueryKey = ['home', 'materials'] as const;
-export const homeSuggestionsQueryKey = ['home', 'suggestions'] as const;
 
-export type HomeSuggestion = {
-  id: string;
-  text: string;
-};
 
 export async function fetchHomeProfile(http: HttpClient): Promise<HomeProfile> {
   const response = await http.request({ path: '/profile', method: 'GET' });
@@ -59,7 +54,9 @@ export async function fetchHomeProfile(http: HttpClient): Promise<HomeProfile> {
   const dto = parsed.data;
   return {
     firstName: dto.firstName,
-    carbonUnits: Number(dto.carbonUnits ?? 0) || 0,
+    // Everything they've earned: drop-offs plus home diversion (web totalCarbonUnits).
+    carbonUnits:
+      (Number(dto.carbonUnits ?? 0) || 0) + (Number(dto.homeCarbonUnits ?? 0) || 0),
     isEmailVerified: dto.isEmailVerified === true,
     phoneNumber: dto.phoneNumber ?? null,
     ready: true,
@@ -68,33 +65,6 @@ export async function fetchHomeProfile(http: HttpClient): Promise<HomeProfile> {
 
 export { fetchDisposeChips };
 
-const suggestionSchema = z.object({
-  _id: z.string(),
-  text: z.string(),
-});
-
-export async function fetchAiSuggestions(
-  http: HttpClient,
-  random: () => number = Math.random,
-): Promise<HomeSuggestion[]> {
-  const env = getEnv();
-  const response = await http.request({
-    path: `${env.aiApiUrl}/suggestions?activeOnly=true`,
-    method: 'GET',
-    headers: { 'x-api-key': env.aiApiKey },
-    token: '',
-  });
-  if (response.status < 200 || response.status >= 300) return [];
-  const body = response.body as { success?: boolean; data?: unknown } | null;
-  if (!body || body.success === false || !Array.isArray(body.data)) return [];
-  const parsed = body.data.flatMap((item) => {
-    const result = suggestionSchema.safeParse(item);
-    return result.success
-      ? [{ id: result.data._id, text: result.data.text }]
-      : [];
-  });
-  return pickRandomSlice(parsed, 4, random);
-}
 
 export async function requestHomeOtp(http: HttpClient): Promise<boolean> {
   const response = await http.request({
@@ -102,4 +72,25 @@ export async function requestHomeOtp(http: HttpClient): Promise<boolean> {
     method: 'GET',
   });
   return response.status >= 200 && response.status < 300;
+}
+
+export const homeGroceriesQueryKey = ['home', 'groceries'] as const;
+
+/**
+ * The member's groceries still in the list, soonest expiry first (web
+ * useActiveGroceries). Empty when they can't be loaded: Home carries on without them.
+ */
+export async function fetchActiveGroceries(http: HttpClient): Promise<GroceryItem[]> {
+  try {
+    const response = await http.request({ path: '/grocery/items?status=active' });
+    if (response.status >= 300) return [];
+    return soonestFirst(
+      unwrapList(response.body).flatMap((row) => {
+        const item = parseGroceryItem(row);
+        return item ? [item] : [];
+      }),
+    );
+  } catch {
+    return [];
+  }
 }

@@ -42,6 +42,8 @@ export type AiMessage = {
   timestamp?: string;
   /** The question needed location and it is off: ask to turn it on, then ask again. */
   locationAsk?: { question: string; access: 'prompt' | 'denied' };
+  /** When each option needs its own context (the food card's two choices do). */
+  optionContexts?: Record<string, Record<string, unknown>>;
   /** DiVA couldn't answer because the member's tokens ran out. */
   outOfTokens?: boolean;
 };

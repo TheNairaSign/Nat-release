@@ -219,3 +219,19 @@ export function FeatherStarGlyph({
     </Svg>
   );
 }
+
+/** FiMic; web draws it at strokeWidth 1.8 in the Ask DiVA box. */
+export function MicGlyph({
+  color,
+  size,
+  strokeWidth = 2,
+}: FeatherGlyphProps & { strokeWidth?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" stroke={color} {...stroke} strokeWidth={strokeWidth} />
+      <Path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke={color} {...stroke} strokeWidth={strokeWidth} />
+      <Line x1="12" y1="19" x2="12" y2="23" stroke={color} {...stroke} strokeWidth={strokeWidth} />
+      <Line x1="8" y1="23" x2="16" y2="23" stroke={color} {...stroke} strokeWidth={strokeWidth} />
+    </Svg>
+  );
+}

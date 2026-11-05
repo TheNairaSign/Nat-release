@@ -8,7 +8,8 @@ export const IMPACT_MILESTONES = [
   { level: 5, start: 5001, end: 10000, name: 'Guardian' },
 ] as const;
 
-export const IMPACT_SEGMENT_COUNT = 20;
+/** The prototype's meter has 23 sticks (web Dashboard SEGMENT_COUNT, Nov 2). */
+export const IMPACT_SEGMENT_COUNT = 23;
 
 export type GreetingPeriod = 'Morning' | 'Afternoon' | 'Evening';
 
