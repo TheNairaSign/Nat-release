@@ -12,6 +12,16 @@
  * was invisible on mobile even though the text replies came through.
  */
 
+import {
+  normalizeAiImages,
+  parseGuidance,
+  parseRecipe,
+  parseTokenCost,
+  type AiImage,
+  type DiversionGuidance,
+  type UseUpRecipe,
+} from './extras';
+
 export type AiToolCall = {
   name: string;
   parameters: Record<string, unknown>;
@@ -76,10 +86,48 @@ export type ParsedAiReply = {
   text: string;
   tools: AiToolCall[];
   options: string[];
+  guidance?: DiversionGuidance;
+  recipe?: UseUpRecipe;
+  images?: AiImage[];
+  /** CLARIFICATION's context, sent back with the picked option. */
+  context?: Record<string, unknown>;
+  /** AI tokens the reply took ("−20 TK" under it), when the app is metered. */
+  tokenCost?: number;
 };
 
-/** Mirrors `parseAiResponse`, including each response type's tool synthesis. */
+/**
+ * Mirrors web `parseAiResponse`: the text and buttons per response type, plus the
+ * advice card, recipe, images and token cost that any type may carry.
+ */
 export function parseAiResponse(body: unknown): ParsedAiReply {
+  const core = parseReplyCore(body);
+  const root = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
+  const envelope =
+    root.type === undefined && root.data && typeof root.data === 'object'
+      ? (root.data as Record<string, unknown>)
+      : root;
+  const data = paramsOf(envelope.data);
+  const guidance = parseGuidance(data.guidance);
+  const recipe = parseRecipe(data.recipe);
+  const images = normalizeAiImages(data.images);
+  const context =
+    str(envelope.type).toUpperCase() === 'CLARIFICATION' &&
+    data.context &&
+    typeof data.context === 'object'
+      ? (data.context as Record<string, unknown>)
+      : undefined;
+  const tokenCost = parseTokenCost(root) ?? parseTokenCost(envelope);
+  return {
+    ...core,
+    ...(guidance ? { guidance } : {}),
+    ...(recipe ? { recipe } : {}),
+    ...(images.length > 0 ? { images } : {}),
+    ...(context ? { context } : {}),
+    ...(tokenCost ? { tokenCost } : {}),
+  };
+}
+
+function parseReplyCore(body: unknown): ParsedAiReply {
   if (!body || typeof body !== 'object') {
     return { text: FALLBACK_ANSWER, tools: [], options: [] };
   }

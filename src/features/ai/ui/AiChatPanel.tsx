@@ -33,6 +33,7 @@ export function AiChatPanel({
   onOption,
   onClear,
   onBack,
+  onTokens,
 }: {
   firstName?: string;
   messages: AiMessage[];
@@ -42,8 +43,11 @@ export function AiChatPanel({
   onSend: () => void;
   onChip: (prompt: string) => void;
   onAction: (action: AiAction) => void;
-  onOption: (option: string) => void;
+  /** A picked option, with the message it came from (its context goes back with it). */
+  onOption: (option: string, message: AiMessage) => void;
   onClear: () => void;
+  /** Out of tokens: the link under DiVA's message opens the tokens page. */
+  onTokens?: () => void;
   /** Web puts a back chevron left of the logo in the chat header. */
   onBack?: () => void;
 }) {
@@ -285,6 +289,37 @@ export function AiChatPanel({
                       </Text>
                     ))}
                   </View>
+                  {/* web: `mt-1.5 text-[11px] leading-none text-slate-400 tabular-nums` */}
+                  {message.tokenCost ? (
+                    <Text
+                      testID={`ai-cost-${message.id}`}
+                      style={{
+                        marginTop: -2,
+                        fontSize: 11,
+                        lineHeight: 13,
+                        color: '#94a3b8',
+                        fontVariant: ['tabular-nums'],
+                      }}
+                    >
+                      −{message.tokenCost} TK
+                    </Text>
+                  ) : null}
+                  {/* Web shows a toast, "See your tokens and tiers", that opens
+                      /tokens; mobile has no toasts, so the link sits here. */}
+                  {message.outOfTokens && onTokens ? (
+                    <Pressable testID="ai-see-tokens" onPress={onTokens}>
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontFamily: theme.font.semibold,
+                          color: AI_GREEN_DARK,
+                          textDecorationLine: 'underline',
+                        }}
+                      >
+                        See your tokens and tiers
+                      </Text>
+                    </Pressable>
+                  ) : null}
                   {/* Web groups raw tool calls into one Continue button per
                       action (`groupToolsIntoActions`) and lays them out in a
                       wrapping row. */}
@@ -343,7 +378,7 @@ export function AiChatPanel({
                       {message.options.map((option) => (
                         <Pressable
                           key={option}
-                          onPress={() => onOption(option)}
+                          onPress={() => onOption(option, message)}
                           style={{
                             // web: px-4 py-2.5
                             paddingHorizontal: 16,

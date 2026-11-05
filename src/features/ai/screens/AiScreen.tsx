@@ -16,7 +16,10 @@ import {
   aiLandingTitle,
   resolveActionTarget,
   type AiMessage,
+  type ParsedAiReply,
 } from '@/core/ai';
+import { isAllowanceUsedUp } from '@/core/allowance';
+import { isAuthenticated } from '@/core/session';
 import {
   askAi,
   clearChatHistory,
@@ -28,7 +31,8 @@ import {
 } from '../api/ai-api';
 import { AiChatPanel } from '../ui/AiChatPanel';
 import { useSession } from '@/features/auth';
-import { useQuery } from '@/shared/api';
+import { allowanceQueryKey } from '@/features/tokens';
+import { useQuery, useQueryClient } from '@/shared/api';
 import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
 import { ChromeScreen, Text } from '@/shared/ui';
@@ -39,6 +43,35 @@ import {
 } from '@/shared/ui/icons/featherGlyphs';
 
 const CARD_COLORS = ['#D6EBFF', '#FFE4C4', '#E8F5E9', '#F3E5F5'];
+
+/**
+ * Web AiPage.tsx `SHOW_DIVA_LANDING = false` (Oct 14): every way in opens the chat
+ * straight away. The landing below stays for when it's switched back on.
+ */
+const SHOW_DIVA_LANDING = false;
+
+const CONNECTION_TROUBLE =
+  "I'm having trouble connecting right now. Give it another try in a moment.";
+
+/** A reply, or what DiVA says when there was none (`failed`), e.g. out of tokens. */
+type Reply = ParsedAiReply & { outOfTokens?: boolean; failed?: boolean };
+
+/** A reply as a chat message, with everything it carries (web AiChat.tsx sendMessage). */
+function assistantFrom(id: string, reply: ParsedAiReply): AiMessage {
+  return {
+    id,
+    role: 'assistant',
+    text: reply.text,
+    timestamp: new Date().toISOString(),
+    tools: reply.tools,
+    options: reply.options,
+    ...(reply.context ? { context: reply.context } : {}),
+    ...(reply.guidance ? { guidance: reply.guidance } : {}),
+    ...(reply.recipe ? { recipe: reply.recipe } : {}),
+    ...(reply.images ? { images: reply.images } : {}),
+    ...(reply.tokenCost ? { tokenCost: reply.tokenCost } : {}),
+  };
+}
 
 /** Web: w-[72%] of the viewport. */
 const cardWidth = Math.round(Dimensions.get('window').width * 0.72);
@@ -57,9 +90,13 @@ export function AiScreen({
   suggestionId?: string;
 }) {
   const theme = useTheme();
-  const { http, navigation, uuid, linking } = usePorts();
+  const { http, navigation, uuid, linking, guestId } = usePorts();
+  const queryClient = useQueryClient();
   const { session } = useSession();
-  const [chatOpen, setChatOpen] = useState(Boolean(initialQuestion));
+  const signedIn = isAuthenticated(session);
+  const [chatOpen, setChatOpen] = useState(
+    !SHOW_DIVA_LANDING || Boolean(initialQuestion),
+  );
   const [draft, setDraft] = useState('');
   const [localMessages, setLocalMessages] = useState<AiMessage[]>([]);
   const [pending, setPending] = useState(false);
@@ -100,20 +137,27 @@ export function AiScreen({
   const seedQuery = useQuery({
     queryKey: ['ai', 'seed', initialQuestion, suggestionId],
     enabled: Boolean(initialQuestion),
-    queryFn: async () => {
+    queryFn: async (): Promise<Reply> => {
       const question = initialQuestion ?? '';
       void persistChatMessage(http, {
         id: uuid.v4(),
         role: 'user',
         text: question,
       });
-      return askAi(http, {
-        question,
-        userId: session?.userId,
-        firstName: undefined,
-        suggestionId,
-        history: [{ id: 'seed-user', role: 'user', text: question }],
-      });
+      try {
+        return await askAi(http, {
+          question,
+          userId: session?.userId,
+          firstName: undefined,
+          suggestionId,
+          history: [{ id: 'seed-user', role: 'user', text: question }],
+          guestId: signedIn ? undefined : await guestId(),
+        });
+      } catch (error) {
+        return failureReply(error);
+      } finally {
+        void queryClient.invalidateQueries({ queryKey: allowanceQueryKey });
+      }
     },
   });
 
@@ -126,11 +170,8 @@ export function AiScreen({
       ];
       if (seedQuery.data) {
         seeded.push({
-          id: 'seed-assistant',
-          role: 'assistant',
-          text: seedQuery.data.text,
-          tools: seedQuery.data.tools,
-          options: seedQuery.data.options,
+          ...assistantFrom('seed-assistant', seedQuery.data),
+          ...(seedQuery.data.outOfTokens ? { outOfTokens: true } : {}),
         });
       }
       return seeded;
@@ -144,7 +185,25 @@ export function AiScreen({
       seedQuery.isPending &&
       localMessages.length === 0);
 
-  async function send(question: string, fromSuggestionId?: string) {
+  /** What DiVA says when it couldn't answer; out of tokens, in the server's words. */
+  function failureReply(error: unknown): Reply {
+    if (isAllowanceUsedUp(error)) {
+      return {
+        text: error.message,
+        tools: [],
+        options: [],
+        outOfTokens: signedIn,
+        failed: true,
+      };
+    }
+    return { text: CONNECTION_TROUBLE, tools: [], options: [], failed: true };
+  }
+
+  async function send(
+    question: string,
+    fromSuggestionId?: string,
+    context?: Record<string, unknown>,
+  ) {
     const trimmed = question.trim();
     if (!trimmed || waiting) return;
     setChatOpen(true);
@@ -158,24 +217,32 @@ export function AiScreen({
     setLocalMessages(nextHistory);
     setPending(true);
     void persistChatMessage(http, userMessage);
-    const reply = await askAi(http, {
-      question: trimmed,
-      userId: session?.userId,
-      firstName,
-      suggestionId: fromSuggestionId ?? activeSuggestionId,
-      history: nextHistory,
-    });
+    let reply: Reply;
+    try {
+      reply = await askAi(http, {
+        question: trimmed,
+        userId: session?.userId,
+        firstName,
+        suggestionId: fromSuggestionId ?? activeSuggestionId,
+        history: nextHistory,
+        guestId: signedIn ? undefined : await guestId(),
+        context,
+      });
+    } catch (error) {
+      reply = failureReply(error);
+    }
+    // The question may have spent tokens: the profile and tokens page re-read them.
+    void queryClient.invalidateQueries({ queryKey: allowanceQueryKey });
     setActiveSuggestionId(undefined);
     const assistantMessage: AiMessage = {
-      id: uuid.v4(),
-      role: 'assistant',
-      text: reply.text,
-      tools: reply.tools,
-      options: reply.options,
+      ...assistantFrom(uuid.v4(), reply),
+      ...(reply.outOfTokens ? { outOfTokens: true } : {}),
     };
     // Web saves the assistant message too, so its Continue buttons survive a
-    // reload; mobile only ever saved the user's side.
-    void persistChatMessage(http, assistantMessage);
+    // reload. An error isn't saved (web doesn't either).
+    if (!reply.failed) {
+      void persistChatMessage(http, assistantMessage);
+    }
     setLocalMessages([...nextHistory, assistantMessage]);
     setPending(false);
   }
@@ -210,7 +277,13 @@ export function AiScreen({
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
             <AiChatPanel
-              onBack={() => setChatOpen(false)}
+              // With no landing to go back to, back goes wherever they came from.
+              onBack={() =>
+                SHOW_DIVA_LANDING && !initialQuestion
+                  ? setChatOpen(false)
+                  : navigation.back()
+              }
+              onTokens={() => navigation.navigate('/tokens')}
               firstName={firstName}
               messages={thread}
               draft={draft}
@@ -231,8 +304,8 @@ export function AiScreen({
                   navigation.navigate(target.href);
                 }
               }}
-              onOption={(option) => {
-                void send(option);
+              onOption={(option, message) => {
+                void send(option, undefined, message.context);
               }}
               onClear={() => setClearOpen(true)}
             />

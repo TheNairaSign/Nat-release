@@ -22,3 +22,11 @@ export {
   type AiToolCall,
   type ParsedAiReply,
 } from './tools';
+export {
+  normalizeAiImages,
+  parseGuidance,
+  parseRecipe,
+  type AiImage,
+  type DiversionGuidance,
+  type UseUpRecipe,
+} from './extras';

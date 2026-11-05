@@ -1,3 +1,4 @@
+import type { AiImage, DiversionGuidance, UseUpRecipe } from './extras';
 import type { AiToolCall } from './tools';
 
 export const AI_CAPABILITIES = [
@@ -30,6 +31,19 @@ export type AiMessage = {
   /** Raw tool calls from the service; grouped into buttons at render time. */
   tools?: AiToolCall[];
   options?: string[];
+  /** CLARIFICATION context, sent back with the picked option (web `context`). */
+  context?: Record<string, unknown>;
+  guidance?: DiversionGuidance;
+  recipe?: UseUpRecipe;
+  images?: AiImage[];
+  /** AI tokens this reply took, shown faintly under it. */
+  tokenCost?: number;
+  /** When it was said; saved, so a recipe's rating key survives a reload. */
+  timestamp?: string;
+  /** The question needed location and it is off: ask to turn it on, then ask again. */
+  locationAsk?: { question: string; access: 'prompt' | 'denied' };
+  /** DiVA couldn't answer because the member's tokens ran out. */
+  outOfTokens?: boolean;
 };
 
 export function greetingName(firstName?: string): string {

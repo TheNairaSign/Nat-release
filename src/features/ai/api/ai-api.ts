@@ -1,4 +1,12 @@
-import { parseAiResponse, type AiMessage, type AiToolCall } from '@/core/ai';
+import { allowanceUsedUpFrom } from '@/core/allowance';
+import {
+  normalizeAiImages,
+  parseAiResponse,
+  parseGuidance,
+  parseRecipe,
+  type AiMessage,
+  type ParsedAiReply,
+} from '@/core/ai';
 import { getEnv } from '@/shared/config/env';
 import { unwrapList } from '@/shared/api/unwrap';
 import type { HttpClient } from '@/shared/ports/http';
@@ -82,18 +90,31 @@ export async function fetchChatHistory(http: HttpClient): Promise<AiMessage[]> {
       ? row.options.filter((o): o is string => typeof o === 'string')
       : undefined;
 
+    const guidance = parseGuidance(row.guidance);
+    const recipe = parseRecipe(row.recipe);
+    const images = normalizeAiImages(row.images);
     return [
       {
         id: typeof row._id === 'string' ? row._id : `hist-${index}`,
         role,
         text,
+        ...(typeof row.timestamp === 'string' ? { timestamp: row.timestamp } : {}),
         ...(tools && tools.length > 0 ? { tools } : {}),
         ...(options && options.length > 0 ? { options } : {}),
+        ...(guidance ? { guidance } : {}),
+        ...(recipe ? { recipe } : {}),
+        ...(images.length > 0 ? { images } : {}),
       },
     ];
   });
 }
 
+/**
+ * Asks DiVA. As web's aiApi does, it goes with the member's login (or, signed out, the
+ * guest id in the body), so DiVA can take the AI tokens from the right person; and with
+ * this build's `Origin`, which is how DiVA knows which NatCycle server to charge.
+ * Throws AllowanceUsedUpError when the tokens have run out.
+ */
 export async function askAi(
   http: HttpClient,
   input: {
@@ -102,12 +123,12 @@ export async function askAi(
     firstName?: string;
     suggestionId?: string;
     history: AiMessage[];
+    /** Signed out: the device's guest id. */
+    guestId?: string;
+    /** Extra context for this question (a picked option's, or the person's place). */
+    context?: Record<string, unknown>;
   },
-): Promise<{
-  text: string;
-  tools: AiToolCall[];
-  options: string[];
-}> {
+): Promise<ParsedAiReply> {
   const env = getEnv();
   const messages = input.history.slice(-8).map((item) => ({
     text: item.text,
@@ -118,9 +139,17 @@ export async function askAi(
   const response = await http.request({
     path: `${env.aiApiUrl}/ask`,
     method: 'POST',
-    headers: { 'x-api-key': env.aiApiKey },
-    token: '',
+    headers: {
+      'x-api-key': env.aiApiKey,
+      ...(env.divaOrigin ? { Origin: env.divaOrigin } : {}),
+    },
+    // Unset: the signed-in member's token goes as the bearer (a guest's never does).
+    token: undefined,
     body: {
+      allowance: {
+        ...(input.guestId ? { guestId: input.guestId } : {}),
+        surface: 'app',
+      },
       question: input.question,
       userId: input.userId,
       messages,
@@ -134,9 +163,12 @@ export async function askAi(
           : undefined,
         isSuggestion: Boolean(input.suggestionId),
         suggestionId: input.suggestionId,
+        ...input.context,
       },
     },
   });
+  const usedUp = allowanceUsedUpFrom(response.status, response.body);
+  if (usedUp) throw usedUp;
   // The AI service answers `{ type, data, metadata }` with `{ name, parameters }`
   // tools — see core/ai/tools.ts. The old extractAssistantReply expected
   // `{ label, href }` and produced no tools at all.
@@ -168,12 +200,18 @@ export async function persistChatMessage(
         id: message.id,
         text: message.text,
         sender: message.role === 'user' ? 'user' : 'ai',
-        timestamp: new Date().toISOString(),
+        timestamp: message.timestamp ?? new Date().toISOString(),
         ...(message.tools && message.tools.length > 0
           ? { tools: message.tools }
           : {}),
         ...(message.options && message.options.length > 0
           ? { options: message.options }
+          : {}),
+        // Kept so the chat shows them again when reopened (web saves the same).
+        ...(message.guidance ? { guidance: message.guidance } : {}),
+        ...(message.recipe ? { recipe: message.recipe } : {}),
+        ...(message.images && message.images.length > 0
+          ? { images: message.images }
           : {}),
       },
     },
