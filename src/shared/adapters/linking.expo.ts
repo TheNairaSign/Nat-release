@@ -7,5 +7,8 @@ export function createExpoLinking(): LinkingPort {
     openUrl: async (url) => {
       await Linking.openURL(url);
     },
+    openSettings: async () => {
+      await Linking.openSettings();
+    },
   };
 }

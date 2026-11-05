@@ -14,6 +14,7 @@ import {
 import {
   AI_CAPABILITIES,
   aiLandingTitle,
+  needsLocation,
   resolveActionTarget,
   type AiMessage,
   type ParsedAiReply,
@@ -90,7 +91,7 @@ export function AiScreen({
   suggestionId?: string;
 }) {
   const theme = useTheme();
-  const { http, navigation, uuid, linking, guestId } = usePorts();
+  const { http, navigation, uuid, linking, guestId, location } = usePorts();
   const queryClient = useQueryClient();
   const { session } = useSession();
   const signedIn = isAuthenticated(session);
@@ -112,7 +113,10 @@ export function AiScreen({
         !response.body ||
         typeof response.body !== 'object'
       ) {
-        return { firstName: undefined as string | undefined };
+        return {
+          firstName: undefined as string | undefined,
+          city: undefined as string | undefined,
+        };
       }
       const raw = response.body as Record<string, unknown>;
       const data =
@@ -122,6 +126,7 @@ export function AiScreen({
       return {
         firstName:
           typeof data.firstName === 'string' ? data.firstName : undefined,
+        city: typeof data.city === 'string' && data.city ? data.city : undefined,
       };
     },
   });
@@ -212,11 +217,30 @@ export function AiScreen({
       id: uuid.v4(),
       role: 'user',
       text: trimmed,
+      timestamp: new Date().toISOString(),
     };
-    const nextHistory = [...thread, userMessage];
+    // Asking again with a position: the turn-on-location prompts have done their job.
+    const earlier = context?.place
+      ? thread.map((m) => (m.locationAsk ? { ...m, locationAsk: undefined } : m))
+      : thread;
+    const nextHistory = [...earlier, userMessage];
     setLocalMessages(nextHistory);
     setPending(true);
     void persistChatMessage(http, userMessage);
+    // A question about "near me": use the position if it's already allowed; if not,
+    // the reply gets a prompt to turn location on (web AiChat sendMessage).
+    let place: Record<string, unknown> | undefined;
+    let needsPrompt: 'prompt' | 'denied' | null = null;
+    if (needsLocation(trimmed) && !context?.place) {
+      const access = await location.getPermissionStatus().catch(() => null);
+      if (access === 'granted') {
+        const here = await location.getCurrentPosition().catch(() => null);
+        if (here) place = { ...here, ...(profileQuery.data?.city ? { city: profileQuery.data.city } : {}) };
+      } else if (access === 'prompt' || access === 'denied') {
+        needsPrompt = access;
+      }
+    }
+
     let reply: Reply;
     try {
       reply = await askAi(http, {
@@ -226,7 +250,7 @@ export function AiScreen({
         suggestionId: fromSuggestionId ?? activeSuggestionId,
         history: nextHistory,
         guestId: signedIn ? undefined : await guestId(),
-        context,
+        context: place ? { ...context, place } : context,
       });
     } catch (error) {
       reply = failureReply(error);
@@ -237,6 +261,9 @@ export function AiScreen({
     const assistantMessage: AiMessage = {
       ...assistantFrom(uuid.v4(), reply),
       ...(reply.outOfTokens ? { outOfTokens: true } : {}),
+      ...(needsPrompt && !reply.failed
+        ? { locationAsk: { question: trimmed, access: needsPrompt } }
+        : {}),
     };
     // Web saves the assistant message too, so its Continue buttons survive a
     // reload. An error isn't saved (web doesn't either).
@@ -284,6 +311,15 @@ export function AiScreen({
                   : navigation.back()
               }
               onTokens={() => navigation.navigate('/tokens')}
+              onLocated={(message, position) => {
+                const ask = message.locationAsk;
+                if (!ask) return;
+                // Ask again, now with the position (send drops the old prompt).
+                const city = profileQuery.data?.city;
+                void send(ask.question, undefined, {
+                  place: { ...position, ...(city ? { city } : {}) },
+                });
+              }}
               firstName={firstName}
               messages={thread}
               draft={draft}

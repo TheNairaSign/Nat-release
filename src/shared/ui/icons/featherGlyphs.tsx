@@ -1,4 +1,11 @@
-import Svg, { Circle, Line, Path, Polyline, Rect } from 'react-native-svg';
+import Svg, {
+  Circle,
+  Line,
+  Path,
+  Polygon,
+  Polyline,
+  Rect,
+} from 'react-native-svg';
 
 /**
  * Feather icons used by the AI landing capability tiles, transcribed from
@@ -153,6 +160,62 @@ export function CheckGlyph({
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Polyline points="20 6 9 17 4 12" stroke={color} {...stroke} strokeWidth={strokeWidth} />
+    </Svg>
+  );
+}
+
+/** FiExternalLink */
+export function ExternalLinkGlyph({ color, size }: FeatherGlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" stroke={color} {...stroke} />
+      <Polyline points="15 3 21 3 21 9" stroke={color} {...stroke} />
+      <Line x1="10" y1="14" x2="21" y2="3" stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
+/** FiAlertTriangle */
+export function AlertTriangleGlyph({ color, size }: FeatherGlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+        stroke={color}
+        {...stroke}
+      />
+      <Line x1="12" y1="9" x2="12" y2="13" stroke={color} {...stroke} />
+      <Line x1="12" y1="17" x2="12.01" y2="17" stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
+/** FiClock */
+export function ClockGlyph({ color, size }: FeatherGlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx="12" cy="12" r="10" stroke={color} {...stroke} />
+      <Polyline points="12 6 12 12 16 14" stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
+/** FiStar; web fills it (`fill-[#F5B301]`) once rated. */
+export function FeatherStarGlyph({
+  color,
+  size,
+  filled = false,
+  strokeWidth = 2,
+}: FeatherGlyphProps & { filled?: boolean; strokeWidth?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Polygon
+        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+        stroke={color}
+        {...stroke}
+        strokeWidth={strokeWidth}
+        fill={filled ? color : 'none'}
+      />
     </Svg>
   );
 }

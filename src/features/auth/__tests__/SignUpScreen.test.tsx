@@ -88,7 +88,7 @@ describe('SignUpScreen', () => {
     await renderWithProviders(<SignUpScreen query={{ thingsmatch: '1' }} />, {
       ports: {
         http: { request },
-        linking: { openUrl },
+        linking: { openUrl, openSettings: async () => {} },
         navigation: { navigate() {}, replace, back() {} },
       },
     });

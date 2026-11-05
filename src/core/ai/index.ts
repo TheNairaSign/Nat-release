@@ -30,3 +30,16 @@ export {
   type DiversionGuidance,
   type UseUpRecipe,
 } from './extras';
+export {
+  NEARBY_MAX_KM,
+  eventWhen,
+  formatDistance,
+  pickNearestDropoffs,
+  pickNearestEvents,
+  wherePlaceHref,
+  type NearbyDropoff,
+  type NearbyEvent,
+  type RawEvent,
+  type RawLocation,
+} from './nearby';
+export { needsLocation } from './location';

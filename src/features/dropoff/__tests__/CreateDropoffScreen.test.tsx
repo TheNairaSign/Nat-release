@@ -42,6 +42,7 @@ describe('CreateDropoffScreen', () => {
           navigation: { navigate, replace() {}, back() {} },
           location: {
             requestPermission: async () => true,
+            getPermissionStatus: async () => 'granted' as const,
             getCurrentPosition: async () => ({ latitude: 6.5, longitude: 3.3 }),
           },
           camera: {

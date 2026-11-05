@@ -56,6 +56,7 @@ export function createNoopCamera(): Camera {
 export function createNoopLocation(): Location {
   return {
     requestPermission: async () => false,
+    getPermissionStatus: async () => 'prompt',
     getCurrentPosition: async () => null,
   };
 }
@@ -73,7 +74,7 @@ export function createNoopShare(): ShareSheet {
 }
 
 export function createNoopLinking(): Linking {
-  return { openUrl: async () => {} };
+  return { openUrl: async () => {}, openSettings: async () => {} };
 }
 
 export function createNoopBiometrics(): Biometrics {

@@ -8,6 +8,11 @@ export function createExpoLocation(): Location {
       const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
       return status === 'granted';
     },
+    async getPermissionStatus() {
+      const current = await ExpoLocation.getForegroundPermissionsAsync();
+      if (current.status === 'granted') return 'granted';
+      return current.canAskAgain === false ? 'denied' : 'prompt';
+    },
     async getCurrentPosition() {
       const current = await ExpoLocation.getForegroundPermissionsAsync();
       if (current.status !== 'granted') return null;

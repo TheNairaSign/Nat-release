@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Image, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -16,6 +17,10 @@ import { MoreVerticalGlyph } from '@/shared/ui/icons/featherGlyphs';
 import { PaperPlaneGlyph } from '@/shared/ui/icons/materialGlyphs';
 import { ThingsMatchGlyph } from '@/shared/ui/icons/thingsMatchGlyph';
 
+import { recipeFeedbackRef } from '../api/recipe-feedback-api';
+import { DiversionGuidanceCard } from './DiversionGuidanceCard';
+import { LocationPrompt } from './LocationPrompt';
+import { RecipeCard } from './RecipeCard';
 import { TypingDots } from './TypingDots';
 
 /** `AI_CHAT_THEME.greenDark` in client/src/pages/dashboard/ai/aiChatTheme.ts */
@@ -34,6 +39,7 @@ export function AiChatPanel({
   onClear,
   onBack,
   onTokens,
+  onLocated,
 }: {
   firstName?: string;
   messages: AiMessage[];
@@ -48,6 +54,11 @@ export function AiChatPanel({
   onClear: () => void;
   /** Out of tokens: the link under DiVA's message opens the tokens page. */
   onTokens?: () => void;
+  /** Location was turned on from a reply's prompt: ask that question again with it. */
+  onLocated?: (
+    message: AiMessage,
+    position: { latitude: number; longitude: number },
+  ) => void;
   /** Web puts a back chevron left of the logo in the chat header. */
   onBack?: () => void;
 }) {
@@ -304,6 +315,43 @@ export function AiChatPanel({
                       −{message.tokenCost} TK
                     </Text>
                   ) : null}
+                  {message.guidance ? (
+                    <DiversionGuidanceCard guidance={message.guidance} />
+                  ) : null}
+                  {message.recipe ? (
+                    <RecipeCard
+                      recipe={message.recipe}
+                      feedbackRef={recipeFeedbackRef(message.timestamp, message.recipe.title)}
+                    />
+                  ) : null}
+                  {message.locationAsk && onLocated ? (
+                    <LocationPrompt
+                      initial={message.locationAsk.access}
+                      onLocated={(position) => onLocated(message, position)}
+                    />
+                  ) : null}
+                  {/* web: one per row for a single image, two across otherwise; 4:3,
+                      rounded 18, caption under it; a broken image hides itself. */}
+                  {message.images && message.images.length > 0 ? (
+                    <View
+                      style={{
+                        marginTop: 16,
+                        flexDirection: 'row',
+                        flexWrap: 'wrap',
+                        gap: 10,
+                      }}
+                    >
+                      {message.images.map((image, index) => (
+                        <AiReplyImage
+                          key={`${image.url}-${index}`}
+                          url={image.url}
+                          caption={image.caption}
+                          alt={image.alt}
+                          half={message.images!.length > 1}
+                        />
+                      ))}
+                    </View>
+                  ) : null}
                   {/* Web shows a toast, "See your tokens and tiers", that opens
                       /tokens; mobile has no toasts, so the link sits here. */}
                   {message.outOfTokens && onTokens ? (
@@ -488,6 +536,42 @@ export function AiChatPanel({
           </Pressable>
         </View>
       </View>
+    </View>
+  );
+}
+
+function AiReplyImage({
+  url,
+  caption,
+  alt,
+  half,
+}: {
+  url: string;
+  caption?: string;
+  alt?: string;
+  half: boolean;
+}) {
+  const [broken, setBroken] = useState(false);
+  if (broken) return null;
+  return (
+    <View style={{ width: half ? '48%' : '100%' }}>
+      <Image
+        source={{ uri: url }}
+        accessibilityLabel={alt || caption || ''}
+        onError={() => setBroken(true)}
+        style={{
+          width: '100%',
+          aspectRatio: 4 / 3,
+          borderRadius: 18,
+          backgroundColor: '#f1f5f9',
+        }}
+        resizeMode="cover"
+      />
+      {caption ? (
+        <Text style={{ marginTop: 6, paddingHorizontal: 4, fontSize: 12, lineHeight: 16, color: '#64748b' }}>
+          {caption}
+        </Text>
+      ) : null}
     </View>
   );
 }

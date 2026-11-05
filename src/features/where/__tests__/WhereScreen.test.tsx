@@ -86,6 +86,7 @@ function httpForWhere(onReminder?: jest.Mock) {
 
 const locationPort = {
   requestPermission: async () => true,
+  getPermissionStatus: async () => 'granted' as const,
   getCurrentPosition: async () => origin,
 };
 
@@ -153,7 +154,7 @@ describe('WhereScreen', () => {
       ports: {
         http: httpForWhere(),
         location: locationPort,
-        linking: { openUrl },
+        linking: { openUrl, openSettings: async () => {} },
       },
     });
     await waitFor(() => {
