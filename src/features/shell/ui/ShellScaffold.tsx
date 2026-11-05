@@ -6,6 +6,7 @@ import {
   hrefForTab,
   isAiPath,
   isTabLocked,
+  isWasteAppsPath,
   isWherePath,
   tabIdFromPath,
   type ConsumerTabId,
@@ -33,7 +34,8 @@ export function ShellScaffold({
   const { navigation } = usePorts();
   const [collapsed, setCollapsed] = useState(false);
   const hideChrome = hidesConsumerChrome(pathname);
-  const hideHeader = hideChrome || isWherePath(pathname);
+  const hideHeader =
+    hideChrome || isWherePath(pathname) || isWasteAppsPath(pathname);
   const hideAi = hideChrome || isAiPath(pathname);
   const activeId = tabIdFromPath(pathname);
 
@@ -73,6 +75,9 @@ export function ShellScaffold({
             }
             navigation.navigate('/ai');
           }}
+          onWasteAppsPress={() =>
+            navigation.navigate(guest ? '/guest/waste-apps' : '/waste-apps')
+          }
           onNotificationsPress={
             guest
               ? undefined

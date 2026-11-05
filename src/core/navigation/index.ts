@@ -5,6 +5,7 @@ export {
   hrefForTab,
   isAiPath,
   isTabLocked,
+  isWasteAppsPath,
   isWherePath,
   tabById,
   tabIdFromPath,

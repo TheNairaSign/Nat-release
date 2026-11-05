@@ -5,6 +5,7 @@ import { useTheme } from '@/shared/theme';
 import { BrandLogo } from '@/shared/ui/BrandMark';
 import { UserGlyph } from '@/shared/ui/icons/glyphs';
 import { BellGlyph } from '@/shared/ui/icons/uiGlyphs';
+import { WasteAppsMark } from '@/shared/ui/icons/WasteAppsMark';
 import { Text } from '@/shared/ui/Text';
 
 import aiOrb from '@/assets/brand/ai-orb.png';
@@ -16,6 +17,7 @@ export function ShellHeader({
   onLogoPress,
   onAiPress,
   onNotificationsPress,
+  onWasteAppsPress,
 }: {
   guest: boolean;
   hideAi: boolean;
@@ -23,6 +25,8 @@ export function ShellHeader({
   onLogoPress: () => void;
   onAiPress: () => void;
   onNotificationsPress?: () => void;
+  /** Web's header: the four-square mark opens Waste Apps, before the DiVA orb. */
+  onWasteAppsPress?: () => void;
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -71,6 +75,17 @@ export function ShellHeader({
               style={{ padding: 4 }}
             >
               <BellGlyph color={theme.color.ink} size={20} />
+            </Pressable>
+          ) : null}
+          {onWasteAppsPress ? (
+            <Pressable
+              testID="shell-waste-apps"
+              accessibilityRole="button"
+              accessibilityLabel="Waste Apps"
+              onPress={onWasteAppsPress}
+              style={{ padding: 4 }}
+            >
+              <WasteAppsMark size={20} />
             </Pressable>
           ) : null}
           {hideAi ? null : (

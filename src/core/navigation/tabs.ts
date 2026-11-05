@@ -77,6 +77,11 @@ export function isAiPath(pathname: string): boolean {
   return pathname.startsWith('/ai') || pathname.includes('/ai');
 }
 
+/** The Waste Apps page draws its own header, as the prototype does. */
+export function isWasteAppsPath(pathname: string): boolean {
+  return /^(\/guest)?\/waste-apps$/.test(pathname);
+}
+
 export function hidesConsumerChrome(pathname: string): boolean {
   return pathname.includes('verify-email') || pathname.includes('sign-in');
 }

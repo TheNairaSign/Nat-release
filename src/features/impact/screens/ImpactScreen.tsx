@@ -161,12 +161,15 @@ export function ImpactScreen() {
           <Text style={pillValue}>{stats.dropoffs}</Text>
           <Text style={pillLabel}>drop-off</Text>
         </Pressable>
-        {/* Kept out of landfill at home: food used, things SnapDivert diverted. Web
-            opens Waste Apps from here; that page comes with the Grocery Manager. */}
-        <View testID="impact-home" style={{ flex: 1, alignItems: 'center' }}>
+        {/* Kept out of landfill at home: food used, things SnapDivert diverted. */}
+        <Pressable
+          testID="impact-home"
+          onPress={() => navigation.navigate('/waste-apps')}
+          style={{ flex: 1, alignItems: 'center' }}
+        >
           <Text style={pillValue}>{stats.home}</Text>
           <Text style={pillLabel}>home diversion</Text>
-        </View>
+        </Pressable>
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Text style={pillValue}>{stats.bcu}</Text>
           <Text style={pillLabel}>CU</Text>
