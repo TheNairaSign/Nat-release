@@ -10,6 +10,7 @@ import type { Linking } from '@/shared/ports/linking';
 import type { Location } from '@/shared/ports/location';
 import type { Notifications } from '@/shared/ports/notifications';
 import type { ShareSheet } from '@/shared/ports/share';
+import type { Speech } from '@/shared/ports/speech';
 import type { Uuid } from '@/shared/ports/uuid';
 
 export function createNoopAnalytics(): Analytics {
@@ -79,4 +80,16 @@ export function createNoopLinking(): Linking {
 
 export function createNoopBiometrics(): Biometrics {
   return { isAvailable: async () => false };
+}
+
+export function createNoopSpeech(): Speech {
+  return {
+    listen: async ({ onError, onEnd }) => {
+      onError('unsupported');
+      onEnd();
+      return () => {};
+    },
+    say: async () => {},
+    stopSaying: () => {},
+  };
 }

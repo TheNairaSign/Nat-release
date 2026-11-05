@@ -16,6 +16,7 @@ import type { NavigationPort } from '@/shared/ports/navigation';
 import type { Notifications } from '@/shared/ports/notifications';
 import type { SecureStore } from '@/shared/ports/secure-store';
 import type { ShareSheet } from '@/shared/ports/share';
+import type { Speech } from '@/shared/ports/speech';
 import type { Uuid } from '@/shared/ports/uuid';
 
 export type AppPorts = {
@@ -38,6 +39,8 @@ export type AppPorts = {
   biometrics: Biometrics;
   /** The device's guest id (`x-guest-id`, and DiVA's allowance body for guests). */
   guestId: () => Promise<string>;
+  /** Speech to text and the phone's voice (development builds; Expo Go has neither). */
+  speech: Speech;
 };
 
 const PortsContext = createContext<AppPorts | null>(null);

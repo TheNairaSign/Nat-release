@@ -7,6 +7,7 @@ import { createGuestIdSource } from '@/shared/adapters/guest-id';
 import { createExpoCamera } from '@/shared/adapters/camera.expo';
 import { createExpoLocation } from '@/shared/adapters/location.expo';
 import { createRnShare } from '@/shared/adapters/share.rn';
+import { createExpoSpeech } from '@/shared/adapters/speech.expo';
 import { createExpoLinking } from '@/shared/adapters/linking.expo';
 import { createExpoRouterNavigation } from '@/shared/adapters/navigation.expo-router';
 import { createExpoNotifications } from '@/shared/adapters/notifications.expo';
@@ -56,6 +57,7 @@ const ports = {
   linking: createExpoLinking(),
   biometrics: createNoopBiometrics(),
   guestId: getGuestId,
+  speech: createExpoSpeech(),
 };
 
 export function AppProviders({ children }: { children: ReactNode }) {

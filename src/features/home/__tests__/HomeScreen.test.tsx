@@ -156,3 +156,31 @@ describe('HomeScreen', () => {
     });
   });
 });
+
+describe('ask Diva voice', () => {
+  it('puts what was said in the box to check before sending', async () => {
+    const navigate = jest.fn();
+    await renderWithProviders(<HomeScreen />, {
+      ports: {
+        http: { request: async () => ({ status: 200, body: [] }) },
+        navigation: { navigate, replace() {}, back() {} },
+        clock: { now: () => new Date('2026-08-19T15:00:00') },
+        speech: {
+          listen: async ({ onText, onEnd }) => {
+            onText('where can I recycle glass');
+            onEnd();
+            return () => {};
+          },
+          say: async () => {},
+          stopSaying: () => {},
+        },
+      },
+    });
+    await waitFor(() => expect(screen.getByTestId('home-ask-mic')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('home-ask-mic'));
+    await waitFor(() =>
+      expect(screen.getByTestId('home-ask-input').props.value).toBe('where can I recycle glass'),
+    );
+    expect(navigate).not.toHaveBeenCalled();
+  });
+});

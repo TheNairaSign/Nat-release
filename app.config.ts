@@ -51,7 +51,11 @@ export default function createConfig(_ctx: ConfigContext): ExpoConfig {
       supportsTablet: false,
       infoPlist: {
         NSCameraUsageDescription:
-          'Natcycle uses the camera to capture drop-off proof photos.',
+          'Natcycle uses the camera to scan your groceries, snap what you are getting rid of, and capture drop-off proof photos.',
+        NSMicrophoneUsageDescription:
+          'Natcycle uses the microphone so you can ask DiVA and answer the scanner by voice.',
+        NSSpeechRecognitionUsageDescription:
+          'Natcycle turns what you say into text for DiVA and the scanners.',
         NSLocationWhenInUseUsageDescription:
           'Natcycle uses your location to show nearby drop-off points.',
         UIBackgroundModes: ['remote-notification'],
@@ -66,7 +70,12 @@ export default function createConfig(_ctx: ConfigContext): ExpoConfig {
         monochromeImage: './assets/images/android-icon-monochrome.png',
       },
       predictiveBackGestureEnabled: false,
-      permissions: ['CAMERA', 'ACCESS_FINE_LOCATION', 'POST_NOTIFICATIONS'],
+      permissions: [
+        'CAMERA',
+        'RECORD_AUDIO',
+        'ACCESS_FINE_LOCATION',
+        'POST_NOTIFICATIONS',
+      ],
     },
     web: {
       output: 'static',
@@ -78,6 +87,11 @@ export default function createConfig(_ctx: ConfigContext): ExpoConfig {
       'expo-localization',
       'expo-location',
       'expo-image-picker',
+      // The Grocery Manager and SnapDivert viewfinders, and voice answers. These need a
+      // development build (`pnpm start:dev` with the dev client), not Expo Go.
+      'expo-camera',
+      'expo-audio',
+      'expo-speech-recognition',
       [
         'expo-notifications',
         {
