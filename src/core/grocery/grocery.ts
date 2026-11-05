@@ -13,16 +13,43 @@ export type GroceryPackaging = {
   label: string;
 };
 
+export type GroceryItemStatus = 'active' | 'consumed' | 'discarded' | 'expired';
+export type ExpirySource = 'printed' | 'shelf_life' | 'user';
+
 export type GroceryItem = {
   _id: string;
   name: string;
   /** "YYYY-MM-DD…" */
   expiresOn: string;
-  status: 'active' | 'consumed' | 'discarded' | 'expired';
+  expirySource?: ExpirySource;
+  status: GroceryItemStatus;
   packaging: GroceryPackaging | null;
   /** A combined row ("3 limes") stands for this many. */
   quantity?: number;
   imageUrl?: string;
+  /** The number on the scan's photo, and every number a combined row covers. */
+  tag: number;
+  tags?: number[];
+  cartId?: string;
+  /** Per-item switch for the 3-day / 1-day / day-of reminders. */
+  remindersEnabled?: boolean;
+  settledAt?: string | null;
+};
+
+/** One past scan: the photo and everything found in it. */
+export type GroceryScan = {
+  cartId: string;
+  imageUrl?: string;
+  scannedAt: string;
+  items: GroceryItem[];
+};
+
+/** Used against wasted over a period, for History's summary card. */
+export type GroceryWasteStats = {
+  used: number;
+  wasted: number;
+  /** 0..1, the share of settled items actually used; null until something settles. */
+  savedShare: number | null;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -159,8 +186,11 @@ export function parseGroceryItem(raw: unknown): GroceryItem | null {
   }
   const p = r.packaging && typeof r.packaging === 'object' ? (r.packaging as Record<string, unknown>) : null;
   const status = ['active', 'consumed', 'discarded', 'expired'].includes(String(r.status))
-    ? (r.status as GroceryItem['status'])
+    ? (r.status as GroceryItemStatus)
     : 'active';
+  const source = ['printed', 'shelf_life', 'user'].includes(String(r.expirySource))
+    ? (r.expirySource as ExpirySource)
+    : undefined;
   return {
     _id: r._id,
     name: r.name,
@@ -175,5 +205,91 @@ export function parseGroceryItem(raw: unknown): GroceryItem | null {
       : null,
     ...(typeof r.quantity === 'number' ? { quantity: r.quantity } : {}),
     ...(typeof r.imageUrl === 'string' ? { imageUrl: r.imageUrl } : {}),
+    ...(source ? { expirySource: source } : {}),
+    tag: typeof r.tag === 'number' ? r.tag : 0,
+    ...(Array.isArray(r.tags) ? { tags: r.tags.filter((t): t is number => typeof t === 'number') } : {}),
+    ...(typeof r.cartId === 'string' ? { cartId: r.cartId } : {}),
+    ...(typeof r.remindersEnabled === 'boolean' ? { remindersEnabled: r.remindersEnabled } : {}),
+    ...(typeof r.settledAt === 'string' || r.settledAt === null
+      ? { settledAt: r.settledAt as string | null }
+      : {}),
+  };
+}
+
+export function parseGroceryScan(raw: unknown): GroceryScan | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.cartId !== 'string') return null;
+  return {
+    cartId: r.cartId,
+    ...(typeof r.imageUrl === 'string' ? { imageUrl: r.imageUrl } : {}),
+    scannedAt: typeof r.scannedAt === 'string' ? r.scannedAt : new Date().toISOString(),
+    items: Array.isArray(r.items)
+      ? r.items.flatMap((i) => {
+          const item = parseGroceryItem(i);
+          return item ? [{ ...item, cartId: item.cartId ?? (r.cartId as string) }] : [];
+        })
+      : [],
+  };
+}
+
+export function parseWasteStats(raw: unknown): GroceryWasteStats | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  return {
+    used: Number(r.used) || 0,
+    wasted: Number(r.wasted) || 0,
+    savedShare: typeof r.savedShare === 'number' ? r.savedShare : null,
+  };
+}
+
+/** "Number 10" in a question becomes "number 10 (milk)" (web snapDivertChat withItemNames). */
+export function withItemNames(
+  question: string,
+  items: { tag: number; name: string; tags?: number[] }[],
+): string {
+  return question.replace(/\b(?:no\.?|number|#)\s*(\d+)\b/gi, (match, n: string) => {
+    const tag = Number(n);
+    const item = items.find((i) => i.tag === tag || (i.tags ?? []).includes(tag));
+    return item ? `number ${n} (${item.name})` : match;
+  });
+}
+
+/** The divert question for one item, as someone would ask it (web buildDivertQuestion). */
+export function buildDivertQuestion(
+  item: Pick<GroceryItem, 'name' | 'packaging' | 'status'>,
+  place?: DivertPlace,
+): string {
+  const named = place ? [place.city, place.country].filter(Boolean).join(', ') : '';
+  const where = named
+    ? ` I'm in ${named}.`
+    : place?.latitude !== undefined && place?.longitude !== undefined
+      ? " I've shared my location."
+      : '';
+  const packaging = item.packaging;
+  if (item.status === 'discarded' || item.status === 'expired') {
+    return `My ${item.name} went off before I could use it. How do I divert it properly, and how do I stop it happening again?${where}`;
+  }
+  if (!packaging) return `I've got ${item.name} to get rid of. How should I divert it?${where}`;
+  if (!packaging.primaryType) {
+    return `How do I divert the ${packaging.label} from my ${item.name}? It's mixed materials.${where}`;
+  }
+  if (packaging.primaryType === 'organic') {
+    return `What's the best way to compost the ${packaging.label} from my ${item.name}?${where}`;
+  }
+  return `How do I divert the ${packaging.label} from my ${item.name}? I think it's ${packaging.primaryType}.${where}`;
+}
+
+/** The "Make a recipe" request: this week's food, or else the soonest (web buildUseUpRequest). */
+export function buildUseUpRequest(
+  items: GroceryItem[] | null,
+  today = new Date(),
+): { question: string; context: Record<string, unknown> } | null {
+  if (!items || items.length === 0) return null;
+  const due = dueThisWeek(items, today);
+  const pick = (due.length > 0 ? due : items).slice(0, MAX_USE_UP_ITEMS);
+  return {
+    question: "What can I make with my food that's about to expire?",
+    context: { useUp: { items: toUseUpItems(pick, today) } },
   };
 }

@@ -17,6 +17,7 @@ const item = (name: string, expiresOn: string, extra: Partial<GroceryItem> = {})
   expiresOn,
   status: 'active',
   packaging: null,
+  tag: 1,
   ...extra,
 });
 
