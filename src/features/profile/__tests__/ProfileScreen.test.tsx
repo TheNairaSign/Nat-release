@@ -18,6 +18,20 @@ function httpForProfile() {
           },
         };
       }
+      if (path === '/allowance/me') {
+        return {
+          status: 200,
+          body: {
+            data: {
+              enabled: true,
+              tier: 'free',
+              tierName: 'Freemium',
+              tokens: { used: 320, total: 1000, left: 680, extra: 0 },
+              kinds: [],
+            },
+          },
+        };
+      }
       return { status: 200, body: {} };
     },
   };
@@ -39,5 +53,23 @@ describe('ProfileScreen', () => {
     expect(navigate).toHaveBeenCalledWith('/dropoff/all');
     await fireEvent.press(screen.getByTestId('profile-impact'));
     expect(navigate).toHaveBeenCalledWith('/impact');
+  });
+
+  it('shows tokens used on the CU card, and no NatPoints or Rewards', async () => {
+    const navigate = jest.fn();
+    await renderWithProviders(<ProfileScreen />, {
+      ports: {
+        http: httpForProfile(),
+        navigation: { navigate, replace() {}, back() {} },
+      },
+    });
+    await waitFor(() => {
+      expect(screen.getByText('TK used')).toBeTruthy();
+    });
+    expect(screen.getByText('12.5 CU')).toBeTruthy();
+    expect(screen.queryByText('NatPoints')).toBeNull();
+    expect(screen.queryByText('Rewards')).toBeNull();
+    await fireEvent.press(screen.getByTestId('profile-tokens'));
+    expect(navigate).toHaveBeenCalledWith('/tokens');
   });
 });

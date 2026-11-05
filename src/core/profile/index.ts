@@ -6,5 +6,4 @@ export {
   avatarFallbackUrl,
   cuSaved,
   displayName,
-  natPoints,
 } from './profile';

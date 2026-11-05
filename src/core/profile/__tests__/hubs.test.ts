@@ -3,14 +3,12 @@ import {
   impactStats,
   lastDropoffLabel,
 } from '@/core/impact';
-import { displayName, natPoints } from '@/core/profile';
+import { displayName } from '@/core/profile';
 import { canSubmitSimple, dateTooOld, parseDropoffMode } from '@/core/dropoff';
-import { filterRewards } from '@/core/rewards';
 
 describe('profile and impact helpers', () => {
   it('formats profile identity', () => {
     expect(displayName('Ada', 'Lovelace')).toBe('Ada Lovelace');
-    expect(natPoints(12.4, 0)).toBe(12);
   });
 
   it('counts drop-offs vs events', () => {
@@ -65,7 +63,7 @@ describe('profile and impact helpers', () => {
   });
 });
 
-describe('dropoff and rewards helpers', () => {
+describe('dropoff helpers', () => {
   it('parses mode and submit rules', () => {
     expect(parseDropoffMode('campaign')).toBe('campaign');
     expect(parseDropoffMode('simple')).toBe('simple');
@@ -77,18 +75,5 @@ describe('dropoff and rewards helpers', () => {
     const now = new Date('2026-08-19');
     expect(dateTooOld(new Date('2026-01-01'), now)).toBeTruthy();
     expect(dateTooOld(new Date('2026-08-01'), now)).toBeNull();
-  });
-
-  it('splits affordable rewards', () => {
-    const grouped = filterRewards(
-      [
-        { id: 'a', name: 'Mug', pointsRequired: 10, redeemed: false },
-        { id: 'b', name: 'Bag', pointsRequired: 80, redeemed: false },
-      ],
-      'all',
-      20,
-    );
-    expect(grouped.affordable).toHaveLength(1);
-    expect(grouped.keepCollecting).toHaveLength(1);
   });
 });

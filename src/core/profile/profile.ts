@@ -10,14 +10,7 @@ export const PROFILE_ACTIVITY = [
     highlight: false,
     icon: 'search',
   },
-  {
-    id: 'rewards',
-    title: 'Rewards',
-    subtitle: 'Redeem your NatPoints',
-    href: '/rewards',
-    highlight: false,
-    icon: 'gift',
-  },
+  // Web's "My Grocery" (/grocery/history) goes here once the Grocery Manager is built.
   {
     id: 'impact',
     title: 'Green Profile',
@@ -28,8 +21,8 @@ export const PROFILE_ACTIVITY = [
   },
   {
     id: 'campaigns',
-    title: 'Campaigns',
-    subtitle: 'View upcoming campaigns',
+    title: 'Events',
+    subtitle: 'Upcoming events near you',
     href: '/campaigns',
     highlight: true,
     icon: 'bullhorn',
@@ -38,10 +31,6 @@ export const PROFILE_ACTIVITY = [
 
 export function displayName(firstName?: string, lastName?: string): string {
   return [firstName, lastName].filter(Boolean).join(' ').trim() || 'Member';
-}
-
-export function natPoints(pointsEarned?: number, point?: number): number {
-  return Math.round(pointsEarned || point || 0);
 }
 
 export function cuSaved(carbonUnits?: number): string {

@@ -7,7 +7,6 @@ export const en = {
   home: 'Home',
   where: 'Where',
   dropoff: 'Drop-off',
-  rewards: 'Rewards',
   profile: 'Profile',
   healthOk: 'API reachable',
   healthFail: 'API unreachable',

@@ -62,7 +62,6 @@ export function parseAiHref(tool?: string): string | null {
   ) {
     return '/impact';
   }
-  if (lower.includes('reward')) return '/rewards';
   if (lower.includes('log') || lower.includes('record'))
     return '/dropoff/create';
   return null;

@@ -1,12 +1,13 @@
 import { Modal, Pressable, View } from 'react-native';
 
 import { successShareText, type DropoffSuccessPayload } from '@/core/dropoff';
-import { rewardShareUrl, type RewardSharePlatform } from '@/core/rewards';
 import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
 import { Text } from '@/shared/ui';
 
 const SHARE_URL = 'https://natcycle.app';
+
+type SharePlatform = 'twitter' | 'facebook' | 'whatsapp' | 'linkedin';
 
 export function DropoffSuccessModal({
   payload,
@@ -21,12 +22,11 @@ export function DropoffSuccessModal({
   const cu = payload.carbonUnits.toFixed(2);
   const text = successShareText(payload.carbonUnits);
 
-  async function openShare(platform: RewardSharePlatform | 'copy') {
+  async function openShare(platform: SharePlatform | 'copy') {
     if (platform === 'copy') {
       await clipboard.copy(`${text} ${SHARE_URL}`);
       return;
     }
-    // Reuse reward URL builders with drop-off share text via twitter/whatsapp patterns
     if (platform === 'twitter') {
       await linking.openUrl(
         `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(SHARE_URL)}`,
@@ -45,7 +45,9 @@ export function DropoffSuccessModal({
       );
       return;
     }
-    await linking.openUrl(rewardShareUrl('linkedin', text));
+    await linking.openUrl(
+      `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SHARE_URL)}`,
+    );
   }
 
   return (

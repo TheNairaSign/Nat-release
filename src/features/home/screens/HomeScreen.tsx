@@ -129,7 +129,7 @@ export function HomeScreen({
       {!guest && profile?.ready && !profile.isEmailVerified ? (
         <HomeNoticeBanner
           title="Verify your email"
-          body="Please verify your email to redeem rewards and unlock all features."
+          body="Please verify your email to unlock all features."
           action="Verify Email Now →"
           onPress={() => {
             void onVerify();

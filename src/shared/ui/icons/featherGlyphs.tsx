@@ -129,3 +129,30 @@ export function CameraGlyph({ color, size }: FeatherGlyphProps) {
     </Svg>
   );
 }
+
+/** FiArrowUpRight; web draws it at strokeWidth 2.5 on the tokens stat. */
+export function ArrowUpRightGlyph({
+  color,
+  size,
+  strokeWidth = 2,
+}: FeatherGlyphProps & { strokeWidth?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Line x1="7" y1="17" x2="17" y2="7" stroke={color} {...stroke} strokeWidth={strokeWidth} />
+      <Polyline points="7 7 17 7 17 17" stroke={color} {...stroke} strokeWidth={strokeWidth} />
+    </Svg>
+  );
+}
+
+/** FiCheck; web's "Your tier" mark uses strokeWidth 3. */
+export function CheckGlyph({
+  color,
+  size,
+  strokeWidth = 2,
+}: FeatherGlyphProps & { strokeWidth?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Polyline points="20 6 9 17 4 12" stroke={color} {...stroke} strokeWidth={strokeWidth} />
+    </Svg>
+  );
+}
