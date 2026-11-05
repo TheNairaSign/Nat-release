@@ -11,12 +11,18 @@ export default function WhereRoute() {
     type?: string | string[];
     organization?: string | string[];
     locationId?: string | string[];
+    /** DiVA's advice card links with ?materialType= (web's name for it). */
+    materialType?: string | string[];
+    focus?: string | string[];
+    eventId?: string | string[];
   }>();
   return (
     <WhereScreen
-      type={first(params.type)}
+      type={first(params.type) ?? first(params.materialType)}
       organization={first(params.organization)}
       locationId={first(params.locationId)}
+      initialFocus={first(params.focus)}
+      eventId={first(params.eventId)}
     />
   );
 }

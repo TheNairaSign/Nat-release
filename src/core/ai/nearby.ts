@@ -8,7 +8,9 @@ import {
   fieldMatchesMaterial,
   type LocationMaterialFields,
 } from '@/core/materials';
-import { haversineKm } from '@/core/where';
+import { formatDistance, haversineKm } from '@/core/where';
+
+export { formatDistance };
 
 /** Further than this isn't "near you" for a single item (web MAX_KM). */
 export const NEARBY_MAX_KM = 50;
@@ -58,19 +60,6 @@ export type RawEvent = {
     customLocation?: { coordinates?: number[]; name?: string; address?: string };
   }[];
 };
-
-const MILES_PER_KM = 0.621371;
-
-/** A distance in miles, as web's formatDistance (most users are in the US). */
-export function formatDistance(km: number | null | undefined): string {
-  if (km == null || !Number.isFinite(km)) return '';
-  const miles = km * MILES_PER_KM;
-  if (miles < 0.1) {
-    return `${Math.max(10, Math.round((miles * 5280) / 10) * 10)} ft`;
-  }
-  if (miles < 10) return `${miles.toFixed(1)} mi`;
-  return `${Math.round(miles)} mi`;
-}
 
 function toDropoff(
   raw: RawLocation,

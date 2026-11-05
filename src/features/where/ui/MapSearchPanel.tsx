@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import {
-  formatDistanceKm,
+  formatDistance,
   haversineKm,
   searchTypeLabel,
   type OrganizationResult,
@@ -205,7 +205,7 @@ export function MapSearchPanel({
           <ScrollView>
             {results.map((place) => {
               const distance = origin
-                ? formatDistanceKm(
+                ? formatDistance(
                     haversineKm(
                       origin.latitude,
                       origin.longitude,

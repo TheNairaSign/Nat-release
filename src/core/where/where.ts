@@ -113,9 +113,38 @@ export function haversineKm(
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/** Counted within 15 miles of the person (web MapTopPanel, Oct 29). */
 export function eventsLabel(count: number): string {
-  if (count === 0) return 'No events';
-  return `${count} event${count === 1 ? '' : 's'}`;
+  if (count === 0) return 'No events close to you';
+  return `${count} event${count === 1 ? '' : 's'} near you`;
+}
+
+/** Events further than this aren't "near you" (web WhereMapbox NEAR_EVENT_MILES). */
+export const NEAR_EVENT_KM = 15 * 1.609344;
+
+/** Events with a site within 15 miles; all of them when we don't know where they are. */
+export function nearEventsCount(
+  places: { kind: string; lat: number; lng: number }[],
+  origin: { latitude: number; longitude: number } | null,
+): number {
+  const events = places.filter((p) => p.kind === 'campaign');
+  if (!origin) return events.length;
+  return events.filter(
+    (p) => haversineKm(origin.latitude, origin.longitude, p.lat, p.lng) <= NEAR_EVENT_KM,
+  ).length;
+}
+
+const MILES_PER_KM = 0.621371;
+
+/** A distance in miles, as web's utils/distance.ts (most users are in the US). */
+export function formatDistance(km: number | null | undefined): string {
+  if (km == null || !Number.isFinite(km)) return '';
+  const miles = km * MILES_PER_KM;
+  if (miles < 0.1) {
+    return `${Math.max(10, Math.round((miles * 5280) / 10) * 10)} ft`;
+  }
+  if (miles < 10) return `${miles.toFixed(1)} mi`;
+  return `${Math.round(miles)} mi`;
 }
 
 export function filterPlaces(

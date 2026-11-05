@@ -10,7 +10,9 @@ import {
   directionsUrl,
   filterPlaces,
   haversineKm,
+  isCoveredPosition,
   markerSizeForZoom,
+  nearEventsCount,
   markerSpecForPlace,
   pickPlaceById,
   recordMaterialType,
@@ -35,6 +37,7 @@ import { FilterMenu } from '../ui/FilterMenu';
 import { LocationSheet } from '../ui/LocationSheet';
 import { MapMarkerPin } from '../ui/MapMarkerPin';
 import { MapTopPanel } from '../ui/MapTopPanel';
+import { WhereCoverageNotice } from '../ui/WhereCoverageNotice';
 import { useQuery } from '@/shared/api';
 import { MAP_DATA_ACCURACY_URL } from '@/shared/config/legalUrls';
 import { usePorts } from '@/shared/hooks/use-ports';
@@ -49,18 +52,26 @@ export function WhereScreen({
   type,
   organization,
   locationId,
+  initialFocus,
+  eventId,
   onRequireSignIn,
 }: {
   guest?: boolean;
   type?: string;
   organization?: string;
   locationId?: string;
+  /** `?focus=events`: open on the events card ("View on map" from Events). */
+  initialFocus?: string;
+  /** `?eventId=`: open that event's card, as if its marker had been tapped. */
+  eventId?: string;
   onRequireSignIn?: (intent?: WhereSignInIntent) => void;
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { http, navigation, location, linking, kv } = usePorts();
-  const [focus, setFocus] = useState<MapPanelFocus>('points');
+  const [focus, setFocus] = useState<MapPanelFocus>(
+    initialFocus === 'events' || eventId ? 'events' : 'points',
+  );
   const [materialOverride, setMaterialOverride] = useState<
     string | null | undefined
   >(undefined);
@@ -136,7 +147,7 @@ export function WhereScreen({
 
   const selected =
     picked === undefined
-      ? pickPlaceById(placesQuery.data ?? [], locationId)
+      ? pickPlaceById(placesQuery.data ?? [], locationId ?? eventId)
       : picked;
   const panelFocus = selected?.kind === 'campaign' ? 'events' : focus;
   const visible = useMemo(() => {
@@ -173,9 +184,11 @@ export function WhereScreen({
       searchOpen ? searchMaterialTypes(chipsQuery.data ?? [], searchQuery) : [],
     [searchOpen, chipsQuery.data, searchQuery],
   );
-  const eventCount = (placesQuery.data ?? []).filter(
-    (place) => place.kind === 'campaign',
-  ).length;
+  // Counted within 15 miles of the person (web nearEventsCount).
+  const eventCount = nearEventsCount(
+    placesQuery.data ?? [],
+    hasGps ? origin : null,
+  );
   // Any change of selected place clears the branch focus, so the camera never
   // stays parked on a branch of a place the user has moved away from.
   const [pickedBranch, setPickedBranch] = useState<number | null>(null);
@@ -421,6 +434,8 @@ export function WhereScreen({
               key={`${selected.id}:${pickedBranch ?? 'main'}`}
               initialBranchIndex={pickedBranch}
               place={selected}
+              guest={guest}
+              onRequireSignIn={() => onRequireSignIn?.('reminder')}
               reminderPending={reminderPending}
               onClose={() => pick(null)}
               onFocusBranch={setBranchFocus}
@@ -465,6 +480,11 @@ export function WhereScreen({
               Map & data accuracy
             </Text>
           </Pressable>
+        ) : null}
+        {/* Outside the mapped states: say why the map looks empty, once a visit. Not
+            when they came for a particular place or event. */}
+        {hasGps && !isCoveredPosition(origin) && !locationId && !eventId ? (
+          <WhereCoverageNotice />
         ) : null}
         <FilterMenu
           open={filterOpen}

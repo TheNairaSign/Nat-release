@@ -2,10 +2,12 @@ import { Image, Pressable, ScrollView, View } from 'react-native';
 import { useState } from 'react';
 
 import type { WherePlace } from '@/core/where';
+import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
 import { ChevronGlyph, CloseGlyph } from '@/shared/ui/icons/glyphs';
 import { Text } from '@/shared/ui/Text';
 
+import { AttendButton } from './AttendButton';
 import { EventMaterialBlock } from './EventMaterialBlock';
 
 /** Transcribed from PHASE_UI in
@@ -41,6 +43,8 @@ export function LocationSheet({
   onRecord,
   onDirections,
   onReminder,
+  guest = false,
+  onRequireSignIn,
   onFocusBranch,
   initialBranchIndex = null,
 }: {
@@ -50,6 +54,9 @@ export function LocationSheet({
   onRecord: () => void;
   onDirections: () => void;
   onReminder?: () => void;
+  /** Signed out: "I'll attend" asks them to sign in instead. */
+  guest?: boolean;
+  onRequireSignIn?: () => void;
   /** Re-centres the map on the chosen branch, as `handleSimpleMarkerClick`
    *  does on web. Null selects the main location. */
   onFocusBranch?: (coords: { lat: number; lng: number } | null) => void;
@@ -57,6 +64,7 @@ export function LocationSheet({
   initialBranchIndex?: number | null;
 }) {
   const theme = useTheme();
+  const { linking } = usePorts();
   const [descOpen, setDescOpen] = useState(false);
   const [hoursOpen, setHoursOpen] = useState(false);
   // Web keeps `selectedExtraLocationIndex` alongside the selected location and
@@ -426,9 +434,15 @@ export function LocationSheet({
           </Text>
         ) : null}
         {shownPhone ? (
-          <Text variant="small" muted>
-            {shownPhone}
-          </Text>
+          // web: a tel: link (underlined) for an event's phone
+          <Pressable
+            testID="where-phone"
+            onPress={() => void linking.openUrl(`tel:${shownPhone.replace(/[^\d+]/g, '')}`)}
+          >
+            <Text variant="small" muted style={{ textDecorationLine: 'underline' }}>
+              {shownPhone}
+            </Text>
+          </Pressable>
         ) : null}
         {place.whoCanDropOff ? (
           <Text variant="small" muted>
@@ -490,6 +504,13 @@ export function LocationSheet({
               </View>
             ) : null}
           </View>
+        ) : null}
+        {campaign && phase !== 'ended' ? (
+          <AttendButton
+            campaignId={place.id}
+            guest={guest}
+            onRequireSignIn={onRequireSignIn}
+          />
         ) : null}
       </ScrollView>
 

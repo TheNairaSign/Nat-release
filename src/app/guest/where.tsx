@@ -13,6 +13,9 @@ export default function GuestWhere() {
     type?: string | string[];
     organization?: string | string[];
     locationId?: string | string[];
+    materialType?: string | string[];
+    focus?: string | string[];
+    eventId?: string | string[];
   }>();
   const [lock, setLock] = useState<WhereSignInIntent | null>(null);
 
@@ -20,9 +23,11 @@ export default function GuestWhere() {
     <>
       <WhereScreen
         guest
-        type={first(params.type)}
+        type={first(params.type) ?? first(params.materialType)}
         organization={first(params.organization)}
         locationId={first(params.locationId)}
+        initialFocus={first(params.focus)}
+        eventId={first(params.eventId)}
         onRequireSignIn={(intent) => setLock(intent ?? 'record')}
       />
       <GuestSignInModal

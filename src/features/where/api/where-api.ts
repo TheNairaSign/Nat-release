@@ -13,6 +13,7 @@ import {
   type WherePlace,
 } from '@/core/where';
 import { fetchDisposeChips } from '@/shared/api/dispose-chips';
+import { unwrapDataObject } from '@/shared/api/unwrap';
 import type { HttpClient } from '@/shared/ports/http';
 
 export const whereChipsQueryKey = ['where', 'chips'] as const;
@@ -308,6 +309,15 @@ export async function fetchWherePlaces(
         hours: formatCampaignHours(campaign),
         whoCanAttend:
           typeof raw.whoCanAttend === 'string' ? raw.whoCanAttend : undefined,
+        // Events carry a phone and a payment note since Nov 2 (web d3832fd).
+        contactNumber:
+          typeof raw.contactPhone === 'string' && raw.contactPhone.trim()
+            ? raw.contactPhone.trim()
+            : undefined,
+        paymentNote:
+          typeof raw.paymentNote === 'string' && raw.paymentNote.trim()
+            ? raw.paymentNote.trim()
+            : undefined,
         isActive: raw.status !== 'completed' && raw.status !== 'cancelled',
       });
     }
@@ -347,4 +357,40 @@ export async function sendCampaignReminder(
     method: 'POST',
   });
   return response.status >= 200 && response.status < 300;
+}
+
+/** "I'll attend": whether they're going, and how many are (web CampaignApi). */
+export type CampaignAttendance = { count: number; attending: boolean };
+
+function attendanceFrom(body: unknown): CampaignAttendance {
+  const data = unwrapDataObject(body) ?? {};
+  return {
+    count: Number(data.count) || 0,
+    attending: data.attending === true,
+  };
+}
+
+export async function fetchAttendance(
+  http: HttpClient,
+  campaignId: string,
+): Promise<CampaignAttendance> {
+  const response = await http.request({
+    path: `/campaigns/${encodeURIComponent(campaignId)}/attendance`,
+  });
+  if (response.status >= 300) throw new Error(`HTTP ${response.status}`);
+  return attendanceFrom(response.body);
+}
+
+/** Going (POST) or not going after all (DELETE). */
+export async function setAttending(
+  http: HttpClient,
+  campaignId: string,
+  going: boolean,
+): Promise<CampaignAttendance> {
+  const response = await http.request({
+    path: `/campaigns/${encodeURIComponent(campaignId)}/attend`,
+    method: going ? 'POST' : 'DELETE',
+  });
+  if (response.status >= 300) throw new Error(`HTTP ${response.status}`);
+  return attendanceFrom(response.body);
 }

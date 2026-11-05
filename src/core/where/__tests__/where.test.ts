@@ -2,6 +2,9 @@ import { findMatchingMaterial, isMaterialTypeMatch } from '@/core/materials';
 import {
   createDropoffHref,
   eventsLabel,
+  formatDistance,
+  isCoveredPosition,
+  nearEventsCount,
   filterPlaces,
   searchMaterialTypes,
   searchOrganizations,
@@ -26,10 +29,32 @@ describe('where hrefs and filters', () => {
     ).toBe('/dropoff/create?type=plastic&mode=simple&locationId=loc-1');
   });
 
-  it('labels event counts', () => {
-    expect(eventsLabel(0)).toBe('No events');
-    expect(eventsLabel(1)).toBe('1 event');
-    expect(eventsLabel(3)).toBe('3 events');
+  it('labels event counts as near you, as web does', () => {
+    expect(eventsLabel(0)).toBe('No events close to you');
+    expect(eventsLabel(1)).toBe('1 event near you');
+    expect(eventsLabel(3)).toBe('3 events near you');
+  });
+
+  it('counts only events within 15 miles once it knows where they are', () => {
+    const here = { latitude: 41.31, longitude: -72.92 }; // New Haven
+    const places = [
+      { kind: 'campaign', lat: 41.3, lng: -72.9 }, // in town
+      { kind: 'campaign', lat: 42.36, lng: -71.06 }, // Boston
+      { kind: 'simple', lat: 41.3, lng: -72.9 },
+    ];
+    expect(nearEventsCount(places, here)).toBe(1);
+    expect(nearEventsCount(places, null)).toBe(2);
+  });
+
+  it('shows distances in miles', () => {
+    expect(formatDistance(1.609344)).toBe('1.0 mi');
+    expect(formatDistance(32.18688)).toBe('20 mi');
+    expect(formatDistance(0.05)).toBe('160 ft');
+  });
+
+  it('knows the mapped states', () => {
+    expect(isCoveredPosition({ latitude: 41.31, longitude: -72.92 })).toBe(true);
+    expect(isCoveredPosition({ latitude: 6.52, longitude: 3.38 })).toBe(false);
   });
 
   it('filters static vs simple places', () => {

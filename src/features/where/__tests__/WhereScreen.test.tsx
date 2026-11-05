@@ -64,6 +64,8 @@ function httpForWhere(onReminder?: jest.Mock) {
                 // appear when the screen opens with type="Food".
                 materialTypes: ['Food'],
                 location: { coordinates: [3.381, 6.531] },
+                contactPhone: '+1 203 555 0100',
+                paymentNote: 'Free to drop off',
               },
               {
                 _id: 'c2',
@@ -78,6 +80,9 @@ function httpForWhere(onReminder?: jest.Mock) {
             ],
           },
         };
+      }
+      if (path.includes('/attendance')) {
+        return { status: 200, body: { data: { count: 3, attending: false } } };
       }
       return { status: 200, body: [] };
     },
@@ -103,7 +108,7 @@ describe('WhereScreen', () => {
       expect(screen.getByTestId('where-chip-Food')).toBeTruthy();
     });
     await waitFor(() => {
-      expect(screen.getByText('2 events')).toBeTruthy();
+      expect(screen.getByText('2 events near you')).toBeTruthy();
     });
   });
 
@@ -196,5 +201,23 @@ describe('WhereScreen', () => {
     await fireEvent.press(screen.getByTestId('where-place-c1'));
     await fireEvent.press(screen.getByTestId('where-reminder'));
     expect(onRequireSignIn).toHaveBeenCalledWith('reminder');
+  });
+
+  it("opens an event from ?eventId with its phone, payment note and I'll attend", async () => {
+    await renderWithProviders(<WhereScreen type="Food" eventId="c1" />, {
+      ports: { http: httpForWhere(), location: locationPort },
+    });
+    await waitFor(() => expect(screen.getByTestId('where-attend')).toBeTruthy());
+    expect(screen.getByText('Community drive')).toBeTruthy();
+    expect(screen.getByText('+1 203 555 0100')).toBeTruthy();
+    expect(screen.getByText('Free to drop off')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('3 people going')).toBeTruthy());
+  });
+
+  it('tells someone outside the mapped states why the map looks empty', async () => {
+    await renderWithProviders(<WhereScreen />, {
+      ports: { http: httpForWhere(), location: locationPort },
+    });
+    await waitFor(() => expect(screen.getByTestId('where-coverage-notice')).toBeTruthy());
   });
 });

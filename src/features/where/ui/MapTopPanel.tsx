@@ -362,7 +362,13 @@ export function MapTopPanel({
               numberOfLines={2}
               style={{ marginTop: 4, textAlign: 'center' }}
             >
-              Campaigns and pop-up collections
+              Pop-up collections and drives
+            </Text>
+            {/* web (Nov 2): a smaller second line, a tip about using the map */}
+            <Text
+              style={{ marginTop: 2, fontSize: 12.8, color: '#64748b', textAlign: 'center' }}
+            >
+              Zoom out to see more
             </Text>
             <View
               style={{

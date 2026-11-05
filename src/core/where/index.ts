@@ -5,8 +5,11 @@ export {
   directionsUrl,
   eventsLabel,
   filterPlaces,
+  formatDistance,
   formatDistanceKm,
   haversineKm,
+  NEAR_EVENT_KM,
+  nearEventsCount,
   markerSizeForZoom,
   pickPlaceById,
   recordMaterialType,
@@ -43,3 +46,4 @@ export {
   getCampaignId,
   getCampaignPhase,
 } from './campaign';
+export { isCoveredPosition } from './coverage';
