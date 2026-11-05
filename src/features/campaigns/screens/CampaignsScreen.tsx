@@ -15,6 +15,7 @@ import { useQuery } from '@/shared/api';
 import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
 import { ChromeScreen, ScreenBack, Text } from '@/shared/ui';
+import { PinGlyph } from '@/shared/ui/icons/glyphs';
 
 export function CampaignsScreen() {
   const theme = useTheme();
@@ -48,9 +49,35 @@ export function CampaignsScreen() {
   return (
     <ChromeScreen>
       <ScreenBack onPress={() => navigation.back()} />
-      <Text style={{ fontSize: 24, fontFamily: theme.font.bold }}>
-        Campaign Events
-      </Text>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}
+      >
+        <Text style={{ fontSize: 24, fontFamily: theme.font.bold }}>Events</Text>
+        {/* The events part of the Where map, around wherever they are (web, Oct 29). */}
+        <Pressable
+          testID="campaigns-view-on-map"
+          onPress={() => navigation.navigate('/where?focus=events')}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            borderRadius: 999,
+            backgroundColor: '#111111',
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+          }}
+        >
+          <PinGlyph color="#ffffff" size={12} />
+          <Text style={{ fontSize: 12, fontFamily: theme.font.semibold, color: '#ffffff' }}>
+            View on map
+          </Text>
+        </Pressable>
+      </View>
 
       {materials.length > 0 ? (
         <ScrollView
@@ -86,11 +113,11 @@ export function CampaignsScreen() {
           })}
         </ScrollView>
       ) : null}
-      {query.isPending ? <Text muted>Fetching campaigns...</Text> : null}
+      {query.isPending ? <Text muted>Fetching events...</Text> : null}
       {visible.length === 0 && !query.isPending ? (
         <View style={{ alignItems: 'center', marginTop: 16 }}>
           <Text muted style={{ textAlign: 'center' }}>
-            No campaigns found with selected filters, try adjusting your
+            No events found with selected filters, try adjusting your
             filters.
           </Text>
           {material ? (
@@ -119,7 +146,10 @@ export function CampaignsScreen() {
             <Pressable
               key={item.id}
               testID={`campaign-${item.id}`}
-              onPress={() => navigation.navigate(`/campaigns/${item.id}`)}
+              // The event on the Where map, with its card open (web, Oct 29).
+              onPress={() =>
+                navigation.navigate(`/where?focus=events&eventId=${encodeURIComponent(item.id)}`)
+              }
               style={{
                 marginTop: 12,
                 backgroundColor: theme.color.surface,
@@ -134,7 +164,7 @@ export function CampaignsScreen() {
                   source={{
                     uri:
                       item.imageUrl ||
-                      'https://via.placeholder.com/300x150?text=Campaign+Image',
+                      'https://via.placeholder.com/300x150?text=Event',
                   }}
                   style={{ height: 160, width: '100%' }}
                 />
@@ -222,7 +252,10 @@ export function CampaignsScreen() {
                   {item.description}
                 </Text>
 
-                {/* web shows a "Progress / N%" caption row above the bar */}
+                {/* web shows a "Progress / N%" caption row above the bar, and no
+                    bar at all when the event has no goal */}
+                {progress !== null ? (
+                <>
                 <View
                   style={{
                     flexDirection: 'row',
@@ -253,6 +286,8 @@ export function CampaignsScreen() {
                     }}
                   />
                 </View>
+                </>
+                ) : null}
 
                 {/* Ends date and "View →" share one row on web */}
                 <View

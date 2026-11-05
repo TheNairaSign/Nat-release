@@ -33,11 +33,12 @@ export function CampaignDetailScreen({ id }: { id: string }) {
     return (
       <ChromeScreen>
         <ScreenBack onPress={() => navigation.back()} />
-        <Text>Campaign not found.</Text>
+        <Text>Event not found.</Text>
       </ChromeScreen>
     );
   }
-  const pct = campaignProgressPct(item.progress, item.goal);
+  // web's detail divides by `goal || 1`, so it always has a bar.
+  const pct = campaignProgressPct(item.progress, item.goal || 1) ?? 0;
   return (
     <ChromeScreen>
       <ScreenBack onPress={() => navigation.back()} />
@@ -93,13 +94,13 @@ export function CampaignDetailScreen({ id }: { id: string }) {
           marginBottom: 8,
         }}
       >
-        About this Campaign
+        About this event
       </Text>
       <Text style={{ color: '#374151' }}>{item.description}</Text>
       <Text variant="small" muted style={{ marginTop: 8 }}>
         {endsLabel(item.endDate, item.isIndefinite)}
       </Text>
-      {/* web: "Campaign Progress" and the percentage share one
+      {/* web: "Event progress" and the percentage share one
           justify-between row above an h-3 bar, with Goal / Current beneath. */}
       <View
         style={{
@@ -110,7 +111,7 @@ export function CampaignDetailScreen({ id }: { id: string }) {
         }}
       >
         <Text style={{ fontFamily: theme.font.semibold }}>
-          Campaign Progress
+          Event progress
         </Text>
         <Text style={{ fontFamily: theme.font.semibold }}>{pct}%</Text>
       </View>
@@ -223,7 +224,7 @@ export function CampaignDetailScreen({ id }: { id: string }) {
         }}
       >
         <Text style={{ color: '#fff', fontFamily: theme.font.semibold }}>
-          Support This Campaign
+          Support this event
         </Text>
       </Pressable>
     </ChromeScreen>

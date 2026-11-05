@@ -20,9 +20,10 @@ export type CampaignCard = {
   locations: CampaignLocation[];
 };
 
-export function campaignProgressPct(progress: number, goal: number): number {
-  if (!goal) return 0;
-  return Math.min(Math.round((progress / goal) * 100), 100);
+/** Null when there's no goal (most uploaded and found events): no progress bar. */
+export function campaignProgressPct(progress: number, goal: number): number | null {
+  if (!(goal > 0)) return null;
+  return Math.min(Math.round(((progress || 0) / goal) * 100), 100);
 }
 
 export function isUrgentCampaign(
