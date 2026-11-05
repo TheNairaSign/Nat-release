@@ -14,7 +14,7 @@ For every screen, before writing any code:
    `DashboardActionCarousel.tsx`. Reading it gives the wrong UI.
 
    ```bash
-   git -C ../../client worktree add /tmp/client-main main
+   git -C ../../client worktree add --detach <dir> 964a78a
    ```
 
 2. **Follow the imports.** A page is rarely self-contained. `WhereMapbox.tsx`
@@ -32,7 +32,8 @@ For every screen, before writing any code:
 
 A number in a component with no web reference beside it is a review failure.
 
-Reference pinned at `main` @ `b627d0a`.
+Reference pinned at `main` @ `964a78a` (Nov 5, 2026). Earlier entries below were
+written against `b627d0a`.
 
 ## Fixed
 
@@ -601,3 +602,37 @@ against a dev build is the remaining verification step.
 Only **Create drop-off** remains (see the structural divergence above) — it
 needs a product decision, not a styling fix. After that, the visual pass
 against a running build.
+
+## Nov 2026 catch-up: Phase 0 and Phase 1
+
+Web shipped ~56 releases between Oct 13 and Nov 5. Phase 0 (plumbing) and Phase 1 (the
+screens mobile already had) were brought to web `964a78a`:
+
+- **Plumbing:** guest device id (`x-guest-id`), AI token types and the used-up 429 as
+  its own error, and `divaOrigin` so DiVA meters mobile questions (it picks the backend
+  from `Origin`; a native app may set it).
+- **Profile:** CU card with "used/total TK used"; loads in one go behind a skeleton;
+  Rewards and NatPoints removed. New **AI tokens** page (no buying: the stores require
+  their own payments for digital goods, so it reads "open soon").
+- **DiVA:** opens straight into the chat; questions metered; "−20 TK" under replies;
+  out-of-tokens message and link; advice card with nearest drop-offs and events; recipe
+  card with star rating; turn-on-location prompt; reply images; food-card opening.
+- **Impact:** home diversion in the pill and the breakdown; web's pale cards in two
+  sideways rows; layout per HOME – 45.
+- **Events:** "Events" wording; cards and View on map open the Where map; no progress
+  bar without a goal.
+- **Where:** events within 15 miles; I'll attend; event phone and payment note;
+  `?focus=events`, `?eventId=`, `?materialType=`; coverage notice; miles.
+- **Home:** the Nov 2 prototype: 23-stick meter, action carousel (material and food
+  cards), apps row with the Where tile, ask Diva.
+
+### Deferred, on purpose
+
+- **Voice input** (Home and chat): needs a speech-recognition native module, so a dev
+  build rather than Expo Go. The mic says it isn't in the app yet.
+- **Where: dots when zoomed out, and framing nearby events.** The map doesn't report
+  pinch-zoom back to the screen yet (the camera is bound to state).
+- **Grocery Manager, SnapDivert, Waste Apps** (Phase 2). Their Home entry points say
+  they are coming; Profile's "My Grocery" row and the coverage notice's "Open Grocery
+  Manager" button return with them.
+- **Buying tokens or tiers:** in-app purchases, not Stripe, if it's ever offered here.
