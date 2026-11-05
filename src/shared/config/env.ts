@@ -5,6 +5,18 @@ function withHttps(raw: string): string {
   return `https://${raw}`;
 }
 
+/**
+ * The web app whose AI tokens this build spends. DiVA meters a question against the
+ * NatCycle server it finds for the request's Origin (ai `ALLOWANCE_BACKENDS`); a native
+ * app may set that header itself, so the build names the web app on the same server.
+ * A local or unknown server: none, so nothing is metered (as with web on localhost).
+ */
+export function divaOriginFor(apiUrl: string): string | null {
+  if (apiUrl.includes('natcyclewebapp-be-production')) return 'https://natcycle.app';
+  if (apiUrl.includes('natcyclebackend-dev')) return 'https://natcycle-dev.up.railway.app';
+  return null;
+}
+
 const envSchema = z.object({
   EXPO_PUBLIC_API_URL: z.string().min(1),
   EXPO_PUBLIC_AI_API_URL: z.string().min(1),
@@ -25,6 +37,8 @@ export type AppEnv = {
   ursApiUrl: string;
   ursApiKey: string;
   appVariant: AppEnvRaw['EXPO_PUBLIC_APP_VARIANT'];
+  /** Sent to DiVA as `Origin` so questions are counted (see divaOriginFor). */
+  divaOrigin: string | null;
 };
 
 type AppEnvRaw = z.infer<typeof envSchema>;
@@ -58,6 +72,7 @@ function readEnv(): AppEnv {
     ursApiUrl: withHttps(raw.EXPO_PUBLIC_URS_API_URL),
     ursApiKey: raw.EXPO_PUBLIC_URS_API_KEY,
     appVariant: raw.EXPO_PUBLIC_APP_VARIANT,
+    divaOrigin: divaOriginFor(withHttps(raw.EXPO_PUBLIC_API_URL)),
   };
 }
 

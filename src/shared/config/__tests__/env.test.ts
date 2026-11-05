@@ -1,4 +1,4 @@
-import { getEnv, resetEnvCache } from '../env';
+import { divaOriginFor, getEnv, resetEnvCache } from '../env';
 
 describe('getEnv', () => {
   const original = { ...process.env };
@@ -23,5 +23,20 @@ describe('getEnv', () => {
     expect(getEnv().apiUrl).toBe(
       'https://natcyclewebapp-be-production.up.railway.app',
     );
+  });
+});
+
+describe('divaOriginFor', () => {
+  it('names the web app on the same server, so DiVA counts the question there', () => {
+    expect(divaOriginFor('https://natcyclewebapp-be-production.up.railway.app')).toBe(
+      'https://natcycle.app',
+    );
+    expect(divaOriginFor('https://natcyclebackend-dev.up.railway.app')).toBe(
+      'https://natcycle-dev.up.railway.app',
+    );
+  });
+
+  it('meters nothing against a local server', () => {
+    expect(divaOriginFor('http://localhost:5001')).toBeNull();
   });
 });

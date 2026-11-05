@@ -1,3 +1,5 @@
+import { allowanceUsedUpFrom } from '@/core/allowance';
+
 export class HttpError extends Error {
   readonly status: number;
   readonly body: unknown;
@@ -41,8 +43,12 @@ export function readHttpErrorMessage(
   return fallback;
 }
 
+/**
+ * Throws for a failed response. "AI tokens used up" (429 `allowance_used_up`) comes
+ * back as its own error, carrying the server's words, as web's api.ts does.
+ */
 export function assertOk(status: number, body: unknown): void {
   if (status < 200 || status >= 300) {
-    throw new HttpError(status, body);
+    throw allowanceUsedUpFrom(status, body) ?? new HttpError(status, body);
   }
 }

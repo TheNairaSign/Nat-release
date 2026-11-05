@@ -3,6 +3,7 @@ import { QueryClientProvider } from '@/shared/adapters/react-query';
 
 import { createHttpClient } from '@/shared/adapters/http.expo-fetch';
 import { createAsyncStorageStore } from '@/shared/adapters/key-value-store.async-storage';
+import { createGuestIdSource } from '@/shared/adapters/guest-id';
 import { createExpoCamera } from '@/shared/adapters/camera.expo';
 import { createExpoLocation } from '@/shared/adapters/location.expo';
 import { createRnShare } from '@/shared/adapters/share.rn';
@@ -30,12 +31,15 @@ import { ThemeProvider } from '@/shared/theme';
 const queryClient = createQueryClient();
 const env = getEnv();
 const secureStore = createSecureStore();
+const kv = createAsyncStorageStore();
+const getGuestId = createGuestIdSource(kv);
 
 const ports = {
-  kv: createAsyncStorageStore(),
+  kv,
   secureStore,
   http: createHttpClient(`${env.apiUrl}/api`, {
     getToken: () => secureStore.get(SESSION_TOKEN_KEY),
+    getGuestId,
   }),
   navigation: createExpoRouterNavigation(),
   analytics: createNoopAnalytics(),
@@ -51,6 +55,7 @@ const ports = {
   share: createRnShare(),
   linking: createExpoLinking(),
   biometrics: createNoopBiometrics(),
+  guestId: getGuestId,
 };
 
 export function AppProviders({ children }: { children: ReactNode }) {

@@ -36,6 +36,8 @@ export type AppPorts = {
   share: ShareSheet;
   linking: Linking;
   biometrics: Biometrics;
+  /** The device's guest id (`x-guest-id`, and DiVA's allowance body for guests). */
+  guestId: () => Promise<string>;
 };
 
 const PortsContext = createContext<AppPorts | null>(null);

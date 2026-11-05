@@ -20,7 +20,15 @@ function shouldSendBearer(token: string | null | undefined): token is string {
 
 export type HttpClientOptions = {
   getToken?: () => Promise<string | null>;
+  /**
+   * Signed-out requests to our own API carry the device's guest id (`x-guest-id`), as
+   * web's api.ts does, so a guest's free AI tokens are counted per device.
+   */
+  getGuestId?: () => Promise<string>;
 };
+
+const isAbsolute = (path: string) =>
+  path.startsWith('http://') || path.startsWith('https://');
 
 export function createHttpClient(
   baseUrl: string,
@@ -40,6 +48,8 @@ export function createHttpClient(
       const token = input.token ?? (await options.getToken?.()) ?? null;
       if (shouldSendBearer(token)) {
         headers.Authorization = `Bearer ${token}`;
+      } else if (options.getGuestId && !isAbsolute(input.path)) {
+        headers['x-guest-id'] = await options.getGuestId();
       }
 
       const response = await expoFetch(joinUrl(baseUrl, input.path), {

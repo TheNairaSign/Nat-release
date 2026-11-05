@@ -46,6 +46,7 @@ export function createTestPorts(overrides: Partial<AppPorts> = {}): AppPorts {
     share: createNoopShare(),
     linking: createNoopLinking(),
     biometrics: createNoopBiometrics(),
+    guestId: async () => '0f8e4a2c-1d3b-4f5a-9e7d-2b6c8a1f0e3d',
     ...overrides,
   };
 }
