@@ -59,15 +59,10 @@ export function BreakdownGlyph({ materialType }: { materialType?: string }) {
 }
 
 /**
- * Port of client/src/pages/dashboard/components/ImpactBreakdownCard.tsx.
- *
- *   bg-[#D1FF52] rounded-2xl p-4 shadow-sm min-h-[100px]
- *   flex flex-col justify-between
- *     row 1: items-start justify-between — label left, material icon right
- *     row 2: items-end   justify-between — "<qty> <unit>" left, CU pill right
- *
- * The previous version had no icon, no space-between, and put the CU pill on
- * its own line left-aligned.
+ * Port of client/src/pages/dashboard/components/ImpactBreakdownCard.tsx (main 964a78a,
+ * prototype Flow 3 HOME – 45): a pale #F3FBFB card, 20pt corners, the CU in a lime
+ * #D3FD5D pill. The icon only where a material type is given (the See-all grid);
+ * Impact's sideways rows pass none.
  */
 export function ImpactBreakdownCard({
   label,
@@ -75,25 +70,28 @@ export function ImpactBreakdownCard({
   unitLabel,
   carbonUnits,
   materialType,
+  width,
 }: {
   label: string;
   quantity: number;
   unitLabel: string;
   carbonUnits: number;
   materialType?: string;
+  /** Impact's rows: 145pt; the grid lets it fill its column. */
+  width?: number;
 }) {
   const theme = useTheme();
 
   return (
     <View
       style={{
-        flex: 1,
-        backgroundColor: theme.color.lime,
-        borderRadius: theme.radius.lg,
-        padding: 16,
-        minHeight: 100,
-        justifyContent: 'space-between',
-        ...theme.shadow.sm,
+        ...(width ? { width } : { flex: 1 }),
+        height: 88,
+        backgroundColor: '#F3FBFB',
+        borderRadius: 20,
+        paddingHorizontal: 13,
+        paddingTop: 15,
+        paddingBottom: 11,
       }}
     >
       <View
@@ -105,49 +103,57 @@ export function ImpactBreakdownCard({
         }}
       >
         <Text
-          style={{
-            flexShrink: 1,
-            fontSize: 14,
-            fontFamily: theme.font.regular,
-            color: theme.color.text,
-          }}
+          numberOfLines={1}
+          style={{ flexShrink: 1, fontSize: 12, lineHeight: 14, color: '#010B02' }}
         >
           {label}
         </Text>
-        <BreakdownGlyph materialType={materialType} />
+        {materialType ? <BreakdownGlyph materialType={materialType} /> : null}
       </View>
 
       <View
         style={{
+          marginTop: 'auto',
           flexDirection: 'row',
-          alignItems: 'flex-end',
+          alignItems: 'center',
           justifyContent: 'space-between',
           gap: 8,
-          marginTop: 8,
         }}
       >
-        <Text style={{ flexShrink: 1, color: theme.color.text }}>
-          <Text style={{ fontSize: 18, fontFamily: theme.font.bold }}>
+        <View>
+          <Text
+            style={{
+              fontSize: 18,
+              lineHeight: 22,
+              fontFamily: theme.font.bold,
+              color: '#1C0F28',
+              fontVariant: ['tabular-nums'],
+            }}
+          >
             {Math.round(quantity)}
           </Text>
-          <Text style={{ fontSize: 14, color: '#334155' }}> {unitLabel}</Text>
-        </Text>
+          <Text style={{ fontSize: 12, lineHeight: 14, color: '#1C0F28', opacity: 0.45 }}>
+            {unitLabel}
+          </Text>
+        </View>
         <View
           style={{
-            backgroundColor: '#1A1A1A',
-            borderRadius: theme.radius.pill,
-            paddingHorizontal: 10,
-            paddingVertical: 4,
+            height: 27,
+            justifyContent: 'center',
+            borderRadius: 14,
+            backgroundColor: '#D3FD5D',
+            paddingHorizontal: 12,
           }}
         >
-          <Text style={{ fontSize: 12, color: '#ffffff' }}>
-            <Text style={{ fontFamily: theme.font.bold, color: '#ffffff' }}>
-              {Math.round(carbonUnits)}
-            </Text>
-            <Text style={{ fontFamily: theme.font.regular, color: '#ffffff' }}>
-              {' '}
-              CU
-            </Text>
+          <Text
+            style={{
+              fontSize: 12,
+              fontFamily: theme.font.bold,
+              color: '#010B02',
+              fontVariant: ['tabular-nums'],
+            }}
+          >
+            {Math.round(carbonUnits)} CU
           </Text>
         </View>
       </View>

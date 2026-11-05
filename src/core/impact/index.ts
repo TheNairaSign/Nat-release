@@ -31,3 +31,12 @@ export {
   type MaterialCatalogItem,
   type MaterialContribution,
 } from './impact';
+export {
+  NO_HOME_DIVERSION,
+  breakdownUnit,
+  impactPill,
+  parseHomeDiversion,
+  totalCarbonUnits,
+  withHomeDiversion,
+  type HomeDiversion,
+} from './home';

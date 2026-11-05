@@ -1,7 +1,10 @@
 import {
+  NO_HOME_DIVERSION,
+  parseHomeDiversion,
   parseRegularActivity,
   parseSimpleActivity,
   type DropoffActivity,
+  type HomeDiversion,
   type MaterialCatalogItem,
 } from '@/core/impact';
 import { unwrapDataObject, unwrapList } from '@/shared/api/unwrap';
@@ -14,6 +17,8 @@ export async function fetchImpactUser(http: HttpClient): Promise<{
   lastName?: string;
   profilePictureUrl?: string;
   carbonUnits: number;
+  /** Carbon Units from home diversion (Grocery Manager, SnapDivert). */
+  homeCarbonUnits: number;
   createdAt?: string;
   itemsCount: Record<string, number>;
 } | null> {
@@ -41,6 +46,7 @@ export async function fetchImpactUser(http: HttpClient): Promise<{
     lastName: typeof raw.lastName === 'string' ? raw.lastName : undefined,
     profilePictureUrl,
     carbonUnits: Number(raw.carbonUnits ?? 0) || 0,
+    homeCarbonUnits: Number(raw.homeCarbonUnits ?? 0) || 0,
     createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : undefined,
     itemsCount: items,
   };
@@ -103,4 +109,17 @@ export async function fetchImpactCatalog(http: HttpClient): Promise<{
     }
   }
   return { types, materials };
+}
+
+export const homeDiversionQueryKey = ['impact', 'home-diversion'] as const;
+
+/** GET /home-diversion; empty when it can't be loaded, so the page still shows. */
+export async function fetchHomeDiversion(http: HttpClient): Promise<HomeDiversion> {
+  try {
+    const response = await http.request({ path: '/home-diversion' });
+    if (response.status >= 300) return NO_HOME_DIVERSION;
+    return parseHomeDiversion(unwrapDataObject(response.body));
+  } catch {
+    return NO_HOME_DIVERSION;
+  }
 }

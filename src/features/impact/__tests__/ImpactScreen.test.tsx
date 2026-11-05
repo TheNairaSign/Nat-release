@@ -14,6 +14,7 @@ function httpForImpact() {
             firstName: 'Ada',
             lastName: 'Lovelace',
             carbonUnits: 8,
+            homeCarbonUnits: 3.6,
             createdAt: '2024-01-01',
           },
         };
@@ -47,6 +48,21 @@ function httpForImpact() {
           },
         };
       }
+      if (path === '/home-diversion') {
+        return {
+          status: 200,
+          body: {
+            data: {
+              food: 4,
+              things: 1,
+              packaging: 0,
+              total: 5,
+              cu: 3.6,
+              byMaterial: { organics: { items: 4, cu: 2.6 }, others: { items: 1, cu: 1 } },
+            },
+          },
+        };
+      }
       return { status: 200, body: {} };
     },
   };
@@ -66,9 +82,22 @@ describe('ImpactScreen', () => {
       hydrated: true,
     });
     await waitFor(() => {
-      expect(screen.getByText('Breakdown')).toBeTruthy();
+      expect(screen.getByText('Material Breakdown')).toBeTruthy();
     });
     await fireEvent.press(screen.getByTestId('impact-see-all'));
     expect(navigate).toHaveBeenCalledWith('/material-contributions');
+  });
+
+  it('counts home diversion in the pill and the breakdown, as web does', async () => {
+    await renderWithProviders(<ImpactScreen />, { ports: { http: httpForImpact() } });
+    useSessionStore.setState({
+      session: { token: 't', userId: 'u1' },
+      hydrated: true,
+    });
+    await waitFor(() => expect(screen.getByText('home diversion')).toBeTruthy());
+    // 8 from drop-offs + 3.6 from home, floored.
+    await waitFor(() => expect(screen.getByText('11')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Organics')).toBeTruthy());
+    expect(screen.queryByText('events')).toBeNull();
   });
 });

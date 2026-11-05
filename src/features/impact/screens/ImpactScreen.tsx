@@ -1,19 +1,24 @@
 import { useState } from 'react';
-import { Image, Pressable, View } from 'react-native';
+import { Image, Pressable, ScrollView, View } from 'react-native';
 
 import {
+  NO_HOME_DIVERSION,
   actionMapPoints,
+  breakdownUnit,
   calculateUserContributions,
   dayCounts,
-  impactStats,
-  impactUnitForCard,
+  impactPill,
   sinceLabel,
+  totalCarbonUnits,
   uniqueActiveDays,
+  withHomeDiversion,
 } from '@/core/impact';
 import {
+  fetchHomeDiversion,
   fetchImpactActivities,
   fetchImpactCatalog,
   fetchImpactUser,
+  homeDiversionQueryKey,
   impactDropoffsQueryKey,
   impactMaterialsQueryKey,
   impactUserQueryKey,
@@ -28,11 +33,16 @@ import { impactShareText } from '@/core/dropoff';
 import { SnapCarousel } from '@/shared/ui/SnapCarousel';
 import { ImpactActionMapCard } from '../ui/ImpactActionMapCard';
 import { ImpactGreenCommitsCard } from '../ui/ImpactGreenCommitsCard';
-import { ChevronGlyph } from '@/shared/ui/icons/glyphs';
+
+/** web: auto-cols-[145px], two rows, gap-x-[13px] gap-y-[18px], px-[21px] bleeding out. */
+const CARD_W = 145;
+const CARD_GAP_X = 13;
+const CARD_GAP_Y = 18;
+const CU_EXPLAINER_URL = 'https://www.natcycle.com/carbon-unit';
 
 export function ImpactScreen() {
   const theme = useTheme();
-  const { http, navigation, share } = usePorts();
+  const { http, navigation, share, linking } = usePorts();
   const { session } = useSession();
   const userId = session?.userId ?? '';
   const [tab, setTab] = useState<'commits' | 'map'>('commits');
@@ -49,15 +59,31 @@ export function ImpactScreen() {
     queryKey: impactMaterialsQueryKey,
     queryFn: () => fetchImpactCatalog(http),
   });
+  // Food used from the Grocery Manager and things SnapDivert diverted.
+  const homeQuery = useQuery({
+    queryKey: homeDiversionQueryKey,
+    queryFn: () => fetchHomeDiversion(http),
+  });
   const user = profileQuery.data;
   const activities = dropoffsQuery.data ?? [];
-  const stats = impactStats(activities, user?.carbonUnits ?? 0);
-  const contributions = calculateUserContributions(
-    activities.filter((item) => item.kind !== 'simple'),
-    user?.itemsCount ?? {},
-    catalogQuery.data?.types ?? [],
-    catalogQuery.data?.materials ?? [],
-  );
+  const home = homeQuery.data;
+  const stats = impactPill(activities, home ?? NO_HOME_DIVERSION, user);
+  const contributions = home
+    ? withHomeDiversion(
+        calculateUserContributions(
+          activities.filter((item) => item.kind !== 'simple'),
+          user?.itemsCount ?? {},
+          catalogQuery.data?.types ?? [],
+          catalogQuery.data?.materials ?? [],
+        ),
+        home,
+      )
+    : [];
+  const breakdownLoading = catalogQuery.isPending || homeQuery.isPending;
+  // Two rows that scroll sideways, filled column by column (web grid-flow-col).
+  const cards = contributions.slice(0, 8);
+  const columns: (typeof cards)[] = [];
+  for (let i = 0; i < cards.length; i += 2) columns.push(cards.slice(i, i + 2));
   // No zero-row filter: web seeds every catalog material at zero and renders
   // `materialContributions.slice(0, 4)` unfiltered (Impact.tsx), so materials
   // you have not dropped off yet — glass, paper — still appear. Filtering them
@@ -78,49 +104,53 @@ export function ImpactScreen() {
     );
   }
 
+  const pillValue = { color: '#fff', fontSize: 20, lineHeight: 22, fontFamily: theme.font.bold };
+  const pillLabel = { color: '#94a3b8', fontSize: 12, marginTop: 4 };
+
   return (
     <ChromeScreen>
-      <View style={{ alignItems: 'center', marginBottom: 20 }}>
+      {/* Prototype Flow 3 (HOME – 45): 32pt avatar, 18 bold name, "Since" 12 */}
+      <View style={{ alignItems: 'center', paddingTop: 17 }}>
         {user?.profilePictureUrl ? (
           <Image
             source={{ uri: user.profilePictureUrl }}
-            style={{ width: 64, height: 64, borderRadius: 32 }}
+            style={{ width: 32, height: 32, borderRadius: 16 }}
           />
         ) : (
           <View
             style={{
-              width: 64,
-              height: 64,
-              borderRadius: 32,
+              width: 32,
+              height: 32,
+              borderRadius: 16,
               backgroundColor: '#D1FF52',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Text style={{ fontFamily: theme.font.bold, fontSize: 20 }}>
+            <Text style={{ fontFamily: theme.font.bold, fontSize: 12, color: '#000' }}>
               {initials}
             </Text>
           </View>
         )}
-        <Text
-          style={{ fontSize: 18, fontFamily: theme.font.medium, marginTop: 12 }}
-        >
+        <Text style={{ fontSize: 18, lineHeight: 22, fontFamily: theme.font.bold, color: '#010B02' }}>
           {user?.firstName} {user?.lastName}
         </Text>
         {sinceLabel(user?.createdAt) ? (
-          <Text variant="small" muted style={{ marginTop: 4 }}>
+          <Text style={{ fontSize: 12, lineHeight: 14, color: '#1C0F28' }}>
             {sinceLabel(user?.createdAt)}
           </Text>
         ) : null}
       </View>
+
+      {/* web: mt-[27px] bg-[#111111] rounded-full px-4 py-4, three columns */}
       <View
         style={{
-          backgroundColor: theme.color.ink,
-          borderRadius: theme.radius.pill,
+          marginTop: 27,
+          backgroundColor: '#111111',
+          borderRadius: 999,
           flexDirection: 'row',
           paddingVertical: 16,
           paddingHorizontal: 16,
-          marginBottom: 20,
         }}
       >
         <Pressable
@@ -128,99 +158,91 @@ export function ImpactScreen() {
           onPress={() => navigation.navigate('/dropoff/all')}
           style={{ flex: 1, alignItems: 'center' }}
         >
-          <Text
-            style={{ color: '#fff', fontSize: 20, fontFamily: theme.font.bold }}
-          >
-            {stats.dropoffs}
-          </Text>
-          <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>
-            drop-off
-          </Text>
+          <Text style={pillValue}>{stats.dropoffs}</Text>
+          <Text style={pillLabel}>drop-off</Text>
         </Pressable>
-        <Pressable
-          testID="impact-events"
-          onPress={() => navigation.navigate('/campaigns')}
-          style={{ flex: 1, alignItems: 'center' }}
-        >
-          <Text
-            style={{ color: '#fff', fontSize: 20, fontFamily: theme.font.bold }}
-          >
-            {stats.events}
-          </Text>
-          <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>
-            events
-          </Text>
-        </Pressable>
+        {/* Kept out of landfill at home: food used, things SnapDivert diverted. Web
+            opens Waste Apps from here; that page comes with the Grocery Manager. */}
+        <View testID="impact-home" style={{ flex: 1, alignItems: 'center' }}>
+          <Text style={pillValue}>{stats.home}</Text>
+          <Text style={pillLabel}>home diversion</Text>
+        </View>
         <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text
-            style={{ color: '#fff', fontSize: 20, fontFamily: theme.font.bold }}
-          >
-            {stats.bcu}
-          </Text>
-          <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>
-            CU
-          </Text>
+          <Text style={pillValue}>{stats.bcu}</Text>
+          <Text style={pillLabel}>CU</Text>
         </View>
       </View>
-      <Text style={{ fontFamily: theme.font.medium, marginBottom: 12 }}>
-        Breakdown
-      </Text>
+
       <View
         style={{
+          marginTop: 44,
+          paddingHorizontal: 8,
           flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: 8,
-          marginBottom: 8,
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
         }}
       >
-        {contributions.slice(0, 4).map((row) => (
-          <View key={row.materialType} style={{ width: '48%' }}>
-            <ImpactBreakdownCard
-              label={row.label}
-              quantity={row.totalQuantity}
-              unitLabel={impactUnitForCard(row.materialType)}
-              carbonUnits={row.carbonUnits}
-              materialType={row.materialType}
-            />
-          </View>
-        ))}
+        <Text style={{ fontSize: 16, fontFamily: theme.font.medium, color: '#1E0D2A' }}>
+          Material Breakdown
+        </Text>
+        <Pressable testID="impact-see-all" onPress={() => navigation.navigate('/material-contributions')}>
+          <Text style={{ fontSize: 16, fontStyle: 'italic', color: '#1E0D2A' }}>See all</Text>
+        </Pressable>
       </View>
-      <Pressable
-        testID="impact-see-all"
-        onPress={() => navigation.navigate('/material-contributions')}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'flex-end',
-          marginBottom: 16,
-          gap: 2,
-        }}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ marginTop: 13, marginHorizontal: -16 }}
+        contentContainerStyle={{ paddingHorizontal: 21, gap: CARD_GAP_X }}
       >
-        <Text style={{ fontSize: 12, color: '#1B4332' }}>See all</Text>
-        <ChevronGlyph color="#1B4332" size={12} direction="right" />
-      </Pressable>
-      <View style={{ flexDirection: 'row', gap: 16, marginBottom: 12 }}>
-        <Pressable onPress={() => setTab('commits')}>
-          <Text
-            style={{
-              fontSize: 16,
-              color:
-                tab === 'commits' ? theme.color.ink : theme.color.placeholder,
-            }}
-          >
-            Green Commits
-          </Text>
-        </Pressable>
-        <Pressable onPress={() => setTab('map')}>
-          <Text
-            style={{
-              fontSize: 16,
-              color: tab === 'map' ? theme.color.ink : theme.color.placeholder,
-            }}
-          >
-            Action Map
-          </Text>
-        </Pressable>
+        {breakdownLoading
+          ? [0, 1, 2].map((col) => (
+              <View key={col} style={{ gap: CARD_GAP_Y }}>
+                {[0, 1].map((row) => (
+                  <View
+                    key={row}
+                    style={{ width: CARD_W, height: 88, borderRadius: 20, backgroundColor: '#F3FBFB' }}
+                  />
+                ))}
+              </View>
+            ))
+          : columns.map((column, i) => (
+              <View key={i} style={{ gap: CARD_GAP_Y }}>
+                {column.map((row) => (
+                  <ImpactBreakdownCard
+                    key={row.materialType}
+                    width={CARD_W}
+                    label={row.label}
+                    quantity={row.totalQuantity}
+                    unitLabel={breakdownUnit(row.materialType)}
+                    carbonUnits={row.carbonUnits}
+                  />
+                ))}
+              </View>
+            ))}
+      </ScrollView>
+
+      <View style={{ marginTop: 52 }} />
+      {/* web: gap-[43px] px-1.5 text-[18px] text-[#1E0D2A], the active one bold */}
+      <View style={{ flexDirection: 'row', gap: 43, paddingHorizontal: 6, marginBottom: 30 }}>
+        {(
+          [
+            ['commits', 'Green Commits'],
+            ['map', 'Action Map'],
+          ] as const
+        ).map(([key, label]) => (
+          <Pressable key={key} onPress={() => setTab(key)}>
+            <Text
+              style={{
+                fontSize: 18,
+                color: '#1E0D2A',
+                fontFamily: tab === key ? theme.font.bold : theme.font.regular,
+              }}
+            >
+              {label}
+            </Text>
+          </Pressable>
+        ))}
       </View>
       {/* Web pairs the tab labels with a SnapCardCarousel holding BOTH cards
           (Impact.tsx:252-266) — swipeable, snapping, with the next card
@@ -239,7 +261,7 @@ export function ImpactScreen() {
             counts={counts}
             activeDays={days}
             totalDiversions={activities.length}
-            allTimeCarbonUnits={user?.carbonUnits ?? 0}
+            allTimeCarbonUnits={totalCarbonUnits(user)}
           />,
           <ImpactActionMapCard
             key="map"
@@ -248,26 +270,48 @@ export function ImpactScreen() {
           />,
         ]}
       </SnapCarousel>
+      {/* web: mt-[64px] centred, h-[47px] rounded-full bg-[#356A2E] px-[23px] 16 bold */}
       <Pressable
         testID="impact-share"
         onPress={() => {
           void share.share(
-            impactShareText(stats.dropoffs + stats.events, user?.carbonUnits ?? 0),
+            impactShareText(activities.length, totalCarbonUnits(user)),
           );
         }}
         style={{
-          alignSelf: 'flex-end',
-          marginTop: 16,
-          backgroundColor: '#1B5E20',
-          borderRadius: theme.radius.pill,
-          paddingHorizontal: 20,
-          paddingVertical: 10,
+          alignSelf: 'center',
+          marginTop: 64,
+          height: 47,
+          justifyContent: 'center',
+          backgroundColor: '#356A2E',
+          borderRadius: 999,
+          paddingHorizontal: 23,
         }}
       >
-        <Text style={{ color: '#fff', fontFamily: theme.font.semibold }}>
+        <Text style={{ color: '#fff', fontSize: 16, fontFamily: theme.font.bold }}>
           Share commit
         </Text>
       </Pressable>
+
+      <View style={{ marginTop: 90, paddingHorizontal: 6, paddingBottom: 24 }}>
+        <Text style={{ fontSize: 16, fontFamily: theme.font.medium, color: '#1E0D2A' }}>
+          CU is Carbon Units
+        </Text>
+        <Pressable onPress={() => void linking.openUrl(CU_EXPLAINER_URL)}>
+          <Text
+            style={{
+              marginTop: 4,
+              maxWidth: 296,
+              fontSize: 10,
+              lineHeight: 12,
+              color: '#B1B1B1',
+              textDecorationLine: 'underline',
+            }}
+          >
+            Measure is based on EPA iWARM standard. Read more on carbon cards and carbon units
+          </Text>
+        </Pressable>
+      </View>
     </ChromeScreen>
   );
 }
