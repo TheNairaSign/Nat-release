@@ -139,11 +139,20 @@ export function GroceryScannerScreen({ guest = false }: { guest?: boolean }) {
     });
   }
 
-  /** Ask out loud, then listen: nobody should have to tap anything. */
+  /**
+   * Ask out loud, then listen: nobody should have to tap anything. Our own voice first
+   * (the scan service's), the phone's voice when there isn't one (web ask()).
+   */
   async function ask(text: string) {
     speech.stopSaying();
     setSpeaking(true);
-    await speech.say(text).catch(() => undefined);
+    const s = session.current;
+    const spoken = s
+      ? await speech
+          .playVoice({ url: `${s.ml.baseUrl.replace(/\/$/, '')}/v1/speech`, token: s.ml.token, text })
+          .catch(() => false)
+      : false;
+    if (!spoken) await speech.say(text).catch(() => undefined);
     setSpeaking(false);
     await listen();
   }

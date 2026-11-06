@@ -89,6 +89,7 @@ export function createNoopSpeech(): Speech {
       onEnd();
       return () => {};
     },
+    playVoice: async () => false,
     say: async () => {},
     stopSaying: () => {},
   };

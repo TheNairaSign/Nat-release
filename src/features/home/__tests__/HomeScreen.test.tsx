@@ -169,6 +169,7 @@ describe('ask Diva voice', () => {
             onEnd();
             return () => {};
           },
+          playVoice: async () => false,
           say: async () => {},
           stopSaying: () => {},
         },

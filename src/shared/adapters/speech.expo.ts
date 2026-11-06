@@ -1,3 +1,6 @@
+import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
+import { fetch as expoFetch } from 'expo/fetch';
+import { File, Paths } from 'expo-file-system';
 import * as ExpoSpeech from 'expo-speech';
 
 import type { ListenHandlers, Speech, SpeechError } from '@/shared/ports/speech';
@@ -24,8 +27,66 @@ function errorOf(code: string): SpeechError {
   return 'failed';
 }
 
+const EXTENSIONS: Record<string, string> = {
+  'audio/mpeg': 'mp3',
+  'audio/mp3': 'mp3',
+  'audio/wav': 'wav',
+  'audio/x-wav': 'wav',
+  'audio/ogg': 'ogg',
+  'audio/aac': 'aac',
+  'audio/mp4': 'm4a',
+};
+
+/** A short stable name for a prompt, so the same phrase reuses its cached file. */
+function promptName(text: string): string {
+  let hash = 0;
+  for (let i = 0; i < text.length; i += 1) hash = (hash * 31 + text.charCodeAt(i)) | 0;
+  return `prompt-${(hash >>> 0).toString(36)}`;
+}
+
 export function createExpoSpeech(): Speech {
+  let player: AudioPlayer | null = null;
+  let audioReady = false;
+
   return {
+    async playVoice({ url, token, text }) {
+      try {
+        if (!audioReady) {
+          // Plays even with the phone on silent, as a spoken question should.
+          await setAudioModeAsync({ playsInSilentMode: true });
+          audioReady = true;
+        }
+        const response = await expoFetch(url, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        if (response.status === 204 || !response.ok) return false;
+        const type = (response.headers.get('content-type') ?? 'audio/mpeg').split(';')[0]!.trim();
+        const file = new File(Paths.cache, `${promptName(text)}.${EXTENSIONS[type] ?? 'mp3'}`);
+        file.write(new Uint8Array(await response.arrayBuffer()));
+        player?.remove();
+        const current = createAudioPlayer({ uri: file.uri });
+        player = current;
+        await new Promise<void>((resolve) => {
+          const sub = current.addListener('playbackStatusUpdate', (status) => {
+            if (status.didJustFinish) {
+              sub.remove();
+              resolve();
+            }
+          });
+          current.play();
+          // Never wait forever on a clip that doesn't report finishing.
+          setTimeout(() => {
+            sub.remove();
+            resolve();
+          }, 15_000);
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    },
     async listen({ onText, onEnd, onError }: ListenHandlers) {
       const module = recognition();
       if (!module || !module.isRecognitionAvailable()) {
@@ -66,6 +127,7 @@ export function createExpoSpeech(): Speech {
     },
     stopSaying() {
       void ExpoSpeech.stop();
+      player?.pause();
     },
   };
 }
