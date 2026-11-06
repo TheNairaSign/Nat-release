@@ -1,8 +1,9 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { MAX_PINCH, createPinchResponder } from './pinch-responder';
 import { Text } from './Text';
 
 /** Longest side of a captured photo: plenty for identification, quick to upload (web). */
@@ -41,11 +42,22 @@ export type CameraViewfinderHandle = {
  */
 export const CameraViewfinder = forwardRef<
   CameraViewfinderHandle,
-  { active: boolean; zoom?: number; onReady?: () => void; onUnavailable?: () => void }
->(function CameraViewfinder({ active, zoom = 0, onReady, onUnavailable }, ref) {
+  { active: boolean; onReady?: () => void; onUnavailable?: () => void }
+>(function CameraViewfinder({ active, onReady, onUnavailable }, ref) {
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
   const [ready, setReady] = useState(false);
+  // Pinch the viewfinder to zoom; the camera takes 0..1 across its own range.
+  const [scale, setScale] = useState(1);
+  const scaleRef = useRef(1);
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
+  const pinch = useMemo(
+    () => createPinchResponder({ getScale: () => scaleRef.current, onScale: setScale }),
+    [],
+  );
+  const zoom = (scale - 1) / (MAX_PINCH - 1);
 
   useEffect(() => {
     if (!active || !permission) return;
@@ -84,16 +96,38 @@ export const CameraViewfinder = forwardRef<
   }
 
   return (
-    <CameraView
-      ref={camera}
-      style={StyleSheet.absoluteFill}
-      facing="back"
-      zoom={zoom}
-      onCameraReady={() => {
-        setReady(true);
-        onReady?.();
-      }}
-      onMountError={() => onUnavailable?.()}
-    />
+    <View style={StyleSheet.absoluteFill} {...pinch.panHandlers}>
+      <CameraView
+        ref={camera}
+        style={StyleSheet.absoluteFill}
+        facing="back"
+        zoom={zoom}
+        onCameraReady={() => {
+          setReady(true);
+          onReady?.();
+        }}
+        onMountError={() => onUnavailable?.()}
+      />
+      {/* web: the zoom as "1.8×" at the top; tap it to zoom back out. */}
+      {ready && scale > 1.05 ? (
+        <Pressable
+          testID="viewfinder-zoom"
+          accessibilityLabel="Zoom back out"
+          onPress={() => setScale(1)}
+          style={{
+            position: 'absolute',
+            top: 20,
+            alignSelf: 'center',
+            zIndex: 10,
+            borderRadius: 999,
+            backgroundColor: 'rgba(0,0,0,0.55)',
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+          }}
+        >
+          <Text style={{ fontSize: 12, fontWeight: '600', color: '#ffffff' }}>{scale.toFixed(1)}×</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 });
