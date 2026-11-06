@@ -310,3 +310,44 @@ export function wherePins(places: WherePlace[]): WherePin[] {
   }
   return pins;
 }
+
+/**
+ * Zoomed far out (several states in view), icons are a mess: below this, unselected
+ * places draw as small dots (web markerZoomScale DOT_MARKER_MAX_ZOOM).
+ */
+export const DOT_MARKER_MAX_ZOOM = 7.5;
+
+/** About a kilometre: a frame round one event doesn't zoom in to street level. */
+const MIN_FRAME_SPAN = 0.01;
+
+/**
+ * The box round the events within 15 miles, for the events card to show them (web
+ * centerOnCampaigns). Null when there are none near: the map stays on the person and
+ * the card says "No events close to you".
+ */
+export function nearEventsFrame(
+  places: { kind: string; lat: number; lng: number }[],
+  origin: { latitude: number; longitude: number },
+): { ne: [number, number]; sw: [number, number] } | null {
+  const near = places.filter(
+    (p) =>
+      p.kind === 'campaign' &&
+      haversineKm(origin.latitude, origin.longitude, p.lat, p.lng) <= NEAR_EVENT_KM,
+  );
+  if (near.length === 0) return null;
+  let minLat = Math.min(...near.map((p) => p.lat));
+  let maxLat = Math.max(...near.map((p) => p.lat));
+  let minLng = Math.min(...near.map((p) => p.lng));
+  let maxLng = Math.max(...near.map((p) => p.lng));
+  if (maxLat - minLat < MIN_FRAME_SPAN) {
+    const mid = (maxLat + minLat) / 2;
+    minLat = mid - MIN_FRAME_SPAN / 2;
+    maxLat = mid + MIN_FRAME_SPAN / 2;
+  }
+  if (maxLng - minLng < MIN_FRAME_SPAN) {
+    const mid = (maxLng + minLng) / 2;
+    minLng = mid - MIN_FRAME_SPAN / 2;
+    maxLng = mid + MIN_FRAME_SPAN / 2;
+  }
+  return { ne: [maxLng, maxLat], sw: [minLng, minLat] };
+}

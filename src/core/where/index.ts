@@ -10,6 +10,8 @@ export {
   haversineKm,
   NEAR_EVENT_KM,
   nearEventsCount,
+  nearEventsFrame,
+  DOT_MARKER_MAX_ZOOM,
   markerSizeForZoom,
   pickPlaceById,
   recordMaterialType,

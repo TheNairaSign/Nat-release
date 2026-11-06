@@ -1,12 +1,19 @@
 import type { ReactNode } from 'react';
 import Mapbox from '@rnmapbox/maps';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { getEnv } from '@/shared/config/env';
 
 /** Room around each marker for its glow and badge; see the MarkerView note. */
 const MARKER_BLEED = 24;
+
+/** A box to fit the camera to, with room kept clear at each edge (web fitBounds). */
+export type MapFrame = {
+  ne: [number, number];
+  sw: [number, number];
+  padding: { top: number; bottom: number; left: number; right: number };
+};
 
 export type MapMarker = {
   id: string;
@@ -23,6 +30,8 @@ export function WhereMap({
   children,
   onMarkerPress,
   cameraMode = 'follow',
+  frame,
+  onZoomChange,
 }: {
   center: { latitude: number; longitude: number };
   zoom: number;
@@ -39,10 +48,39 @@ export function WhereMap({
    * the user's pinch — that is why the Impact map would not zoom.
    */
   cameraMode?: 'follow' | 'initial';
+  /** When set, the camera fits this box instead of `center`/`zoom`. */
+  frame?: MapFrame | null;
+  /** The zoom as the person pinches, for markers that change with it. */
+  onZoomChange?: (zoom: number) => void;
 }) {
   useEffect(() => {
     Mapbox.setAccessToken(getEnv().mapboxToken);
   }, []);
+
+  // The camera moves whenever these change identity, so they're kept stable: a re-render
+  // (a reported zoom, a loaded list) mustn't undo the person's own pinch or pan.
+  const centerCoordinate = useMemo(
+    () => [center.longitude, center.latitude],
+    [center.longitude, center.latitude],
+  );
+  const frameKey = frame
+    ? `${frame.ne.join()}|${frame.sw.join()}|${Object.values(frame.padding).join()}`
+    : '';
+  const bounds = useMemo(
+    () =>
+      frame
+        ? {
+            ne: frame.ne,
+            sw: frame.sw,
+            paddingTop: frame.padding.top,
+            paddingBottom: frame.padding.bottom,
+            paddingLeft: frame.padding.left,
+            paddingRight: frame.padding.right,
+          }
+        : undefined,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [frameKey],
+  );
 
   return (
     <Mapbox.MapView
@@ -52,10 +90,18 @@ export function WhereMap({
       scaleBarEnabled={false}
       logoEnabled={false}
       attributionEnabled={false}
+      onCameraChanged={
+        onZoomChange ? (state) => onZoomChange(state.properties.zoom) : undefined
+      }
     >
-      {cameraMode === 'follow' ? (
+      {cameraMode === 'follow' && frame && bounds ? (
         <Mapbox.Camera
-          centerCoordinate={[center.longitude, center.latitude]}
+          bounds={bounds}
+          animationDuration={900}
+        />
+      ) : cameraMode === 'follow' ? (
+        <Mapbox.Camera
+          centerCoordinate={centerCoordinate}
           zoomLevel={zoom}
           animationDuration={700}
         />

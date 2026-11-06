@@ -640,14 +640,12 @@ screens mobile already had) were brought to web `964a78a`:
 - **SnapDivert** and its History; guests snap without keeping anything.
 - **Coverage notice** has its "Open Grocery Manager" button again.
 
+### Done since (Nov 6, later)
+
+- Guest DiVA chat with 3 free questions; the scanner's own voice; pinch to zoom in both
+  viewfinders; Where's dots when zoomed out and framing of events within 15 miles.
+
 ### Deferred, on purpose
 
-- **The scanner's own voice.** Web plays the ML service's recorded prompt and falls
-  back to the browser's voice; the app uses the phone's voice (expo-speech) for now.
-- **Pinch to zoom** in the scanner and SnapDivert viewfinders.
-- **Guest DiVA chat** (web gives guests 3 free questions). The app's guests are asked to
-  sign up when a screen would open DiVA.
 - **Web's unlinked `/my-grocery` page**: nothing links to it on web.
-- **Where: dots when zoomed out, and framing nearby events.** The map doesn't report
-  pinch-zoom back to the screen yet (the camera is bound to state).
 - **Buying tokens or tiers:** in-app purchases (Apple / Google), not Stripe, if offered.

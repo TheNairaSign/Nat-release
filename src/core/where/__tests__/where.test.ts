@@ -5,6 +5,7 @@ import {
   formatDistance,
   isCoveredPosition,
   nearEventsCount,
+  nearEventsFrame,
   filterPlaces,
   searchMaterialTypes,
   searchOrganizations,
@@ -277,5 +278,20 @@ describe('wherePins', () => {
 
   it('leaves places without branches as a single pin', () => {
     expect(wherePins([site({ extraLocations: undefined })])).toHaveLength(1);
+  });
+
+  it('frames only the events within 15 miles, never a single point', () => {
+    const here = { latitude: 41.31, longitude: -72.92 };
+    const frame = nearEventsFrame(
+      [
+        { kind: 'campaign', lat: 41.3, lng: -72.9 },
+        { kind: 'campaign', lat: 42.36, lng: -71.06 }, // Boston: too far
+        { kind: 'simple', lat: 41.2, lng: -72.8 },
+      ],
+      here,
+    );
+    expect(frame).not.toBeNull();
+    expect(frame!.ne[1] - frame!.sw[1]).toBeCloseTo(0.01);
+    expect(nearEventsFrame([{ kind: 'campaign', lat: 42.36, lng: -71.06 }], here)).toBeNull();
   });
 });

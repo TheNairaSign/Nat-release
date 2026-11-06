@@ -6,6 +6,7 @@ import { PENDING_DROPOFF_KEY } from '@/core/dropoff';
 import { findMatchingMaterial } from '@/core/materials';
 import {
   DEFAULT_MAP_CENTER,
+  DOT_MARKER_MAX_ZOOM,
   createDropoffHref,
   directionsUrl,
   filterPlaces,
@@ -13,6 +14,7 @@ import {
   isCoveredPosition,
   markerSizeForZoom,
   nearEventsCount,
+  nearEventsFrame,
   markerSpecForPlace,
   pickPlaceById,
   recordMaterialType,
@@ -97,6 +99,8 @@ export function WhereScreen({
   );
   const [hasGps, setHasGps] = useState(false);
   const [zoom, setZoom] = useState(12);
+  /** The zoom as the person pinches (markers turn to dots when far out). */
+  const [liveZoom, setLiveZoom] = useState(12);
   const [reminderPending, setReminderPending] = useState(false);
   /** One-shot fly-to-closest after homepage/chip material select. */
   const [materialFocus, setMaterialFocus] = useState<{
@@ -277,6 +281,13 @@ export function WhereScreen({
     return origin;
   }, [branchFocus, selected, selectedMaterial, materialFocus, origin]);
   const cameraZoom = selected ? 16 : zoom;
+  // The events card frames the events within 15 miles, leaving room for the card over
+  // the top and the tab bar at the foot (web centerOnCampaigns, phone padding).
+  const eventsFrame = useMemo(() => {
+    if (panelFocus !== 'events' || selected || !hasGps) return null;
+    const box = nearEventsFrame(placesQuery.data ?? [], origin);
+    return box ? { ...box, padding: { top: 240, bottom: 110, left: 48, right: 48 } } : null;
+  }, [panelFocus, selected, hasGps, placesQuery.data, origin]);
 
   async function onRecord(place: WherePlace) {
     const href =
@@ -321,6 +332,8 @@ export function WhereScreen({
         <WhereMap
           center={camera}
           zoom={cameraZoom}
+          frame={eventsFrame}
+          onZoomChange={(z) => setLiveZoom((prev) => (Math.abs(prev - z) >= 0.1 ? z : prev))}
           showsUser={hasGps}
           markers={pins.map((pin) => ({
             id: pin.key,
@@ -342,6 +355,22 @@ export function WhereScreen({
             const pin = pinByKey.get(marker.id);
             const place = pin ? placeById.get(pin.placeId) : undefined;
             if (!pin || !place) return null;
+            // Far out, several states in view: a small dot until they zoom in.
+            if (liveZoom < DOT_MARKER_MAX_ZOOM && !marker.selected) {
+              return (
+                <View
+                  testID={`where-dot-${marker.id}`}
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    borderWidth: 1,
+                    borderColor: '#ffffff',
+                    backgroundColor: '#1F5D20',
+                  }}
+                />
+              );
+            }
             return (
               <MapMarkerPin
                 spec={markerSpecForPlace(

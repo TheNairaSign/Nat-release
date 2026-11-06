@@ -27,6 +27,11 @@ export function WhereMap({
   children,
   onMarkerPress,
 }: {
+  /** Native only: the camera fits a box (see WhereMap.tsx). */
+  frame?: unknown;
+  /** Native only: the live zoom. */
+  onZoomChange?: (zoom: number) => void;
+  cameraMode?: 'follow' | 'initial';
   center: { latitude: number; longitude: number };
   zoom: number;
   markers: MapMarker[];
