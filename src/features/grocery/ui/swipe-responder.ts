@@ -24,6 +24,8 @@ export function createSwipeResponder({
   onDrag,
   onArm,
   onCommit,
+  usedAt = USED_AT,
+  deleteAt = DELETE_AT,
 }: {
   x: Animated.Value;
   width: number;
@@ -33,11 +35,14 @@ export function createSwipeResponder({
   /** The moment letting go would act (for a haptic nudge). */
   onArm: () => void;
   onCommit: (commit: Exclude<SwipeCommit, null>) => void;
+  /** Share of the width a right / left release needs (SnapDivert uses 0.33 for both). */
+  usedAt?: number;
+  deleteAt?: number;
 }): PanResponderInstance {
   let armed: SwipeCommit = null;
   const commitFor = (dx: number): SwipeCommit => {
-    if (dx >= width * USED_AT) return 'used';
-    if (dx <= -width * DELETE_AT) return 'deleted';
+    if (dx >= width * usedAt) return 'used';
+    if (dx <= -width * deleteAt) return 'deleted';
     return null;
   };
   return PanResponder.create({

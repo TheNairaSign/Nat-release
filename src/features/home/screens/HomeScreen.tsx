@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Dimensions, View } from 'react-native';
+import { Dimensions, View } from 'react-native';
 
 import { buildFoodCardOpening } from '@/core/grocery';
 import { aiHref, impactMeter, whereHref } from '@/core/home';
@@ -36,14 +36,6 @@ const LOAD_LIMIT_MS = 8000;
 
 /** 47pt from the meter to the cards on the prototype's 852-tall screen; less when shorter. */
 const METER_GAP = Math.min(47, Math.max(20, Dimensions.get('window').height * 0.055));
-
-/**
- * The Grocery Manager and SnapDivert come to the app in the next phase. Until then their
- * entry points say so rather than lead nowhere.
- */
-function comingSoon(name: string) {
-  Alert.alert(`${name} is coming to the app`, 'You can use it on natcycle.app today.');
-}
 
 /**
  * Home, from the prototype (HOME – ActionSlide1 – 8, Nov 2) via web Dashboard.tsx: the
@@ -193,7 +185,7 @@ export function HomeScreen({
               ? navigation.navigate('/grocery/history')
               : navigation.navigate('/ai/grocery')
         }
-        onSnapDivert={() => comingSoon('SnapDivert')}
+        onSnapDivert={() => navigation.navigate(guest ? '/guest/snapdivert' : '/snapdivert')}
         onWhere={() => navigation.navigate(guest ? '/guest/where' : '/where')}
         onEvents={() => lockOrGo('/campaigns')}
       />
