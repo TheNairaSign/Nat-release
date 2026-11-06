@@ -164,7 +164,8 @@ export function HomeScreen({
         onSelectMaterial={(item) => setSelected((current) => (current === item ? null : item))}
         groceries={groceries}
         outsideCoverage={coverageQuery.data === 'outside'}
-        onAskHowTo={(question) => lockOrGo(aiHref(question))}
+        // Guests have a few free questions in the chat before it asks them to sign up.
+        onAskHowTo={(question) => navigation.navigate(guest ? `/guest${aiHref(question)}` : aiHref(question))}
         onFindWhere={(material) => navigation.navigate(whereHref(guest, material))}
         onAskAboutGroceries={(items) => {
           // DiVA opens with the choices for the picked food.
@@ -189,7 +190,12 @@ export function HomeScreen({
         onWhere={() => navigation.navigate(guest ? '/guest/where' : '/where')}
         onEvents={() => lockOrGo('/campaigns')}
       />
-      <AskDivaBox onAsk={(question) => lockOrGo(aiHref(question || undefined))} />
+      <AskDivaBox
+        onAsk={(question) => {
+          const href = aiHref(question || undefined);
+          navigation.navigate(guest ? `/guest${href}` : href);
+        }}
+      />
       {!guest && profile?.ready && !profile.isEmailVerified ? (
         <HomeNoticeBanner
           title="Verify your email"

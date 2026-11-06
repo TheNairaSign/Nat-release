@@ -23,13 +23,11 @@ export function ShellScaffold({
   pathname,
   children,
   onLockedTab,
-  onAiLocked,
 }: {
   guest: boolean;
   pathname: string;
   children: ReactNode;
   onLockedTab: () => void;
-  onAiLocked?: () => void;
 }) {
   const theme = useTheme();
   const { navigation } = usePorts();
@@ -73,13 +71,8 @@ export function ShellScaffold({
           onLogoPress={() =>
             navigation.replace(guest ? '/guest/dashboard' : '/home')
           }
-          onAiPress={() => {
-            if (guest) {
-              (onAiLocked ?? onLockedTab)();
-              return;
-            }
-            navigation.navigate('/ai');
-          }}
+          // Guests get a few free DiVA questions before being asked to sign up.
+          onAiPress={() => navigation.navigate(guest ? '/guest/ai' : '/ai')}
           onWasteAppsPress={() =>
             navigation.navigate(guest ? '/guest/waste-apps' : '/waste-apps')
           }

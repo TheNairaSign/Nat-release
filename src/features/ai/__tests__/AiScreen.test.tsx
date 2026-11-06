@@ -1,7 +1,10 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 
 import { AiScreen } from '@/features/ai';
+import { useSessionStore } from '@/features/auth';
 import { renderWithProviders } from '@/test/render';
+
+const signIn = () => useSessionStore.setState({ session: { token: 't', userId: 'u1' }, hydrated: true });
 
 type Call = {
   path: string;
@@ -49,6 +52,7 @@ describe('AiScreen', () => {
     await renderWithProviders(<AiScreen />, {
       ports: { http, navigation: { navigate, replace() {}, back() {} } },
     });
+    signIn();
     await waitFor(() => expect(screen.getByTestId('ai-chip-dropoffs')).toBeTruthy());
     await fireEvent.press(screen.getByTestId('ai-chip-dropoffs'));
     await waitFor(() => expect(screen.getByText('Open the Where tab.')).toBeTruthy());
@@ -84,5 +88,24 @@ describe('AiScreen', () => {
     await waitFor(() =>
       expect(screen.getByText('A DiVA question takes 20 TK and you have 0 left.')).toBeTruthy(),
     );
+  });
+
+  it('gives a guest three free questions, then asks them to sign up', async () => {
+    const { http, calls } = httpForAi(() => WHERE_REPLY);
+    await renderWithProviders(<AiScreen />, { ports: { http } });
+    await waitFor(() => expect(screen.getByText('3 free questions left as a guest')).toBeTruthy());
+    const ask = async (text: string) => {
+      await fireEvent.changeText(screen.getByTestId('ai-draft'), text);
+      await fireEvent.press(screen.getByTestId('ai-send'));
+    };
+    for (let i = 0; i < 3; i += 1) {
+      await ask(`question ${i + 1}`);
+      await waitFor(() => expect(calls.filter((c) => c.path.includes('/ask'))).toHaveLength(i + 1));
+    }
+    await waitFor(() => expect(screen.getByTestId('ai-guest-signup')).toBeTruthy());
+    await ask('question 4');
+    expect(calls.filter((c) => c.path.includes('/ask'))).toHaveLength(3);
+    // Nothing of a guest's is saved to a chat history.
+    expect(calls.some((c) => c.path === '/chat' && (c as { method?: string }).method === 'POST')).toBe(false);
   });
 });

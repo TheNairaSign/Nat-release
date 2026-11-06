@@ -88,10 +88,9 @@ describe('HomeScreen', () => {
     expect(navigate).toHaveBeenCalledWith('/ai');
   });
 
-  it('asks a guest to sign in before asking DiVA', async () => {
-    const onRequireSignIn = jest.fn();
+  it("sends a guest's question to the guest chat, where they have free questions", async () => {
     const navigate = jest.fn();
-    await renderWithProviders(<HomeScreen guest onRequireSignIn={onRequireSignIn} />, {
+    await renderWithProviders(<HomeScreen guest />, {
       ports: {
         http: { request: async () => ({ status: 200, body: [] }) },
         navigation: { navigate, replace() {}, back() {} },
@@ -100,8 +99,7 @@ describe('HomeScreen', () => {
     });
     await waitFor(() => expect(screen.getByTestId('home-ask-send')).toBeTruthy());
     await fireEvent.press(screen.getByTestId('home-ask-send'));
-    expect(onRequireSignIn).toHaveBeenCalled();
-    expect(navigate).not.toHaveBeenCalledWith('/ai');
+    expect(navigate).toHaveBeenCalledWith('/guest/ai');
   });
 
   it('opens the Where map and Events from the apps row', async () => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Image, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -40,6 +40,7 @@ export function AiChatPanel({
   onBack,
   onTokens,
   onLocated,
+  composerNote,
 }: {
   firstName?: string;
   messages: AiMessage[];
@@ -54,6 +55,8 @@ export function AiChatPanel({
   onClear: () => void;
   /** Out of tokens: the link under DiVA's message opens the tokens page. */
   onTokens?: () => void;
+  /** A line above the composer: a guest's free questions left, or the way to sign up. */
+  composerNote?: ReactNode;
   /** Location was turned on from a reply's prompt: ask that question again with it. */
   onLocated?: (
     message: AiMessage,
@@ -474,6 +477,7 @@ export function AiChatPanel({
           backgroundColor: theme.color.surface,
         }}
       >
+        {composerNote ? <View style={{ marginBottom: 6, alignItems: 'center' }}>{composerNote}</View> : null}
         <View
           style={{
             flexDirection: 'row',

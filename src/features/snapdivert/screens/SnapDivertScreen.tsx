@@ -237,14 +237,10 @@ export function SnapDivertScreen({ guest = false }: { guest?: boolean }) {
   /** A photo was sent, so a failure can be tried again without re-shooting. */
   const [canRetry, setCanRetry] = useState(false);
 
-  /** Members ask DiVA; the app has no guest chat yet, so a guest is asked to sign up. */
+  /** DiVA answers in the chat (a guest's free questions count there). */
   const askDiva = (question: string, context?: Record<string, unknown>) => {
-    if (guest) {
-      setSignup(true);
-      return;
-    }
     askDivaWith(question, context);
-    navigation.navigate('/ai');
+    navigation.navigate(guest ? '/guest/ai' : '/ai');
   };
 
   async function identifyPhoto(photo: PreparedPhoto) {

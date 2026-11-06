@@ -14,6 +14,9 @@ import {
 import {
   AI_CAPABILITIES,
   aiLandingTitle,
+  GUEST_FREE_QUESTIONS,
+  GUEST_QUESTIONS_KEY,
+  guestQuestionsLeft,
   needsLocation,
   resolveActionTarget,
   type AiMessage,
@@ -32,7 +35,7 @@ import {
 } from '../api/ai-api';
 import { takeDivaAsk, takeDivaOpening } from '../opening';
 import { AiChatPanel } from '../ui/AiChatPanel';
-import { useSession } from '@/features/auth';
+import { GuestSignInModal, useSession } from '@/features/auth';
 import { allowanceQueryKey } from '@/features/tokens';
 import { useQuery, useQueryClient } from '@/shared/api';
 import { usePorts } from '@/shared/hooks/use-ports';
@@ -97,10 +100,32 @@ export function AiScreen({
   const initialQuestion = handedAsk?.question ?? linkedQuestion;
   const initialContext = handedAsk?.context;
   const theme = useTheme();
-  const { http, navigation, uuid, linking, guestId, location } = usePorts();
+  const { http, navigation, uuid, linking, guestId, location, kv } = usePorts();
   const queryClient = useQueryClient();
   const { session } = useSession();
   const signedIn = isAuthenticated(session);
+  // Guests get a few free questions (web guestDiva.ts); nothing of theirs is saved.
+  const [signupPrompt, setSignupPrompt] = useState<string | null>(null);
+  const guestAskedQuery = useQuery({
+    queryKey: ['ai', 'guest-asked'],
+    queryFn: async () => Number(await kv.get<number>(GUEST_QUESTIONS_KEY).catch(() => 0)) || 0,
+    enabled: !signedIn,
+  });
+  const guestAsked = guestAskedQuery.data ?? 0;
+  /** Counts one more guest question; false (and the sign-up prompt) once they're used. */
+  async function takeGuestQuestion(): Promise<boolean> {
+    if (signedIn) return true;
+    const asked = Number(await kv.get<number>(GUEST_QUESTIONS_KEY).catch(() => 0)) || 0;
+    if (asked >= GUEST_FREE_QUESTIONS) {
+      setSignupPrompt(
+        `That's your ${GUEST_FREE_QUESTIONS} free questions. Sign up to keep asking DiVA, free.`,
+      );
+      return false;
+    }
+    await kv.set(GUEST_QUESTIONS_KEY, asked + 1).catch(() => undefined);
+    void guestAskedQuery.refetch();
+    return true;
+  }
   const [chatOpen, setChatOpen] = useState(
     !SHOW_DIVA_LANDING || Boolean(initialQuestion),
   );
@@ -159,18 +184,24 @@ export function AiScreen({
   const historyQuery = useQuery({
     queryKey: aiHistoryQueryKey,
     queryFn: () => fetchChatHistory(http),
-    enabled: chatOpen && localMessages.length === 0 && !initialQuestion,
+    enabled: signedIn && chatOpen && localMessages.length === 0 && !initialQuestion,
   });
   const seedQuery = useQuery({
     queryKey: ['ai', 'seed', initialQuestion, suggestionId],
     enabled: Boolean(initialQuestion),
     queryFn: async (): Promise<Reply> => {
       const question = initialQuestion ?? '';
-      void persistChatMessage(http, {
-        id: uuid.v4(),
-        role: 'user',
-        text: question,
-      });
+      if (!(await takeGuestQuestion())) {
+        return {
+          text: `That's your ${GUEST_FREE_QUESTIONS} free questions. Sign up to keep asking DiVA, free.`,
+          tools: [],
+          options: [],
+          failed: true,
+        };
+      }
+      if (signedIn) {
+        void persistChatMessage(http, { id: uuid.v4(), role: 'user', text: question });
+      }
       try {
         return await askAi(http, {
           question,
@@ -234,6 +265,7 @@ export function AiScreen({
   ) {
     const trimmed = question.trim();
     if (!trimmed || waiting) return;
+    if (!(await takeGuestQuestion())) return;
     setChatOpen(true);
     setDraft('');
     const userMessage: AiMessage = {
@@ -249,7 +281,7 @@ export function AiScreen({
     const nextHistory = [...earlier, userMessage];
     setLocalMessages(nextHistory);
     setPending(true);
-    void persistChatMessage(http, userMessage);
+    if (signedIn) void persistChatMessage(http, userMessage);
     // A question about "near me": use the position if it's already allowed; if not,
     // the reply gets a prompt to turn location on (web AiChat sendMessage).
     let place: Record<string, unknown> | undefined;
@@ -290,7 +322,7 @@ export function AiScreen({
     };
     // Web saves the assistant message too, so its Continue buttons survive a
     // reload. An error isn't saved (web doesn't either).
-    if (!reply.failed) {
+    if (!reply.failed && signedIn) {
       void persistChatMessage(http, assistantMessage);
     }
     setLocalMessages([...nextHistory, assistantMessage]);
@@ -359,10 +391,29 @@ export function AiScreen({
                 if (!target) return;
                 if (target.kind === 'external') {
                   void linking.openUrl(target.url);
-                } else {
+                } else if (signedIn) {
                   navigation.navigate(target.href);
+                } else if (target.href.startsWith('/where')) {
+                  // Guests have their own map; anything else DiVA points to needs an account.
+                  navigation.navigate(`/guest${target.href}`);
+                } else {
+                  setSignupPrompt('Sign up to do that with NatCycle, and keep asking DiVA.');
                 }
               }}
+              composerNote={
+                signedIn ? undefined : guestQuestionsLeft(guestAsked) ? (
+                  <Text style={{ fontSize: 12, color: '#64748B' }}>{guestQuestionsLeft(guestAsked)}</Text>
+                ) : (
+                  <Pressable
+                    testID="ai-guest-signup"
+                    onPress={() => setSignupPrompt('Sign up to keep asking DiVA, free.')}
+                  >
+                    <Text style={{ fontSize: 12, fontFamily: theme.font.semibold, color: '#1B7A3D', textDecorationLine: 'underline' }}>
+                      Sign up to keep asking DiVA
+                    </Text>
+                  </Pressable>
+                )
+              }
               onOption={(option, message) => {
                 void send(
                   option,
@@ -373,6 +424,11 @@ export function AiScreen({
               onClear={() => setClearOpen(true)}
             />
           </KeyboardAvoidingView>
+          <GuestSignInModal
+            open={signupPrompt !== null}
+            onClose={() => setSignupPrompt(null)}
+            message={signupPrompt ?? undefined}
+          />
           <ClearModal
             open={clearOpen}
             onClose={() => setClearOpen(false)}
