@@ -626,13 +626,28 @@ screens mobile already had) were brought to web `964a78a`:
 - **Home:** the Nov 2 prototype: 23-stick meter, action carousel (material and food
   cards), apps row with the Where tile, ask Diva.
 
+### Phase 2 (Nov 6)
+
+- **Development build:** camera, speech recognition and audio (`expo-camera`,
+  `expo-speech-recognition`, `expo-audio`, `expo-dev-client`). Run with `pnpm start:dev`
+  on a dev build; Expo Go can't do speech or the live viewfinder.
+- **Voice input** on Home's ask Diva, the grocery DiVA bar, the scanner and SnapDivert.
+- **Waste Apps** page; Impact's "home diversion" opens it.
+- **Grocery Manager:** History (30-day summary, Make a recipe, Expiring / History tabs,
+  swipe to settle with Undo, item sheet, how-many, expiry date picker, DiVA bar) and the
+  scanner (photo → Cloudinary → ML cart → DiVA asks aloud and listens → saved list with
+  reminders). Profile's "My Grocery", Home's tiles and the food card open them.
+- **SnapDivert** and its History; guests snap without keeping anything.
+- **Coverage notice** has its "Open Grocery Manager" button again.
+
 ### Deferred, on purpose
 
-- **Voice input** (Home and chat): needs a speech-recognition native module, so a dev
-  build rather than Expo Go. The mic says it isn't in the app yet.
+- **The scanner's own voice.** Web plays the ML service's recorded prompt and falls
+  back to the browser's voice; the app uses the phone's voice (expo-speech) for now.
+- **Pinch to zoom** in the scanner and SnapDivert viewfinders.
+- **Guest DiVA chat** (web gives guests 3 free questions). The app's guests are asked to
+  sign up when a screen would open DiVA.
+- **Web's unlinked `/my-grocery` page**: nothing links to it on web.
 - **Where: dots when zoomed out, and framing nearby events.** The map doesn't report
   pinch-zoom back to the screen yet (the camera is bound to state).
-- **Grocery Manager, SnapDivert, Waste Apps** (Phase 2). Their Home entry points say
-  they are coming; Profile's "My Grocery" row and the coverage notice's "Open Grocery
-  Manager" button return with them.
-- **Buying tokens or tiers:** in-app purchases, not Stripe, if it's ever offered here.
+- **Buying tokens or tiers:** in-app purchases (Apple / Google), not Stripe, if offered.

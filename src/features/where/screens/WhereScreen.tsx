@@ -484,7 +484,9 @@ export function WhereScreen({
         {/* Outside the mapped states: say why the map looks empty, once a visit. Not
             when they came for a particular place or event. */}
         {hasGps && !isCoveredPosition(origin) && !locationId && !eventId ? (
-          <WhereCoverageNotice />
+          <WhereCoverageNotice
+            onGroceryManager={() => navigation.navigate(guest ? '/guest/ai/grocery' : '/ai/grocery')}
+          />
         ) : null}
         <FilterMenu
           open={filterOpen}

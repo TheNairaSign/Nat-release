@@ -9,10 +9,9 @@ let seenThisVisit = false;
 
 /**
  * For someone outside the mapped states: the map still opens, but they hear why it
- * looks empty. Web components/WhereCoverageNotice.tsx; its "Open Grocery Manager"
- * button joins this once the Grocery Manager is in the app.
+ * looks empty and what they can use where they are. Web WhereCoverageNotice.tsx.
  */
-export function WhereCoverageNotice() {
+export function WhereCoverageNotice({ onGroceryManager }: { onGroceryManager: () => void }) {
   const theme = useTheme();
   const [open, setOpen] = useState(() => !seenThisVisit);
   if (!open) return null;
@@ -65,12 +64,15 @@ export function WhereCoverageNotice() {
               textAlign: 'center',
             }}
           >
-            We&apos;re adding new areas. You can still explore the map, and DiVA works
-            wherever you are.
+            We&apos;re adding new areas. You can still explore the map, and Grocery Manager,
+            SnapDivert and DiVA work wherever you are.
           </Text>
           <Pressable
-            testID="where-coverage-explore"
-            onPress={dismiss}
+            testID="where-coverage-grocery"
+            onPress={() => {
+              dismiss();
+              onGroceryManager();
+            }}
             style={{
               marginTop: 20,
               height: 46,
@@ -82,6 +84,15 @@ export function WhereCoverageNotice() {
             }}
           >
             <Text style={{ fontSize: 15, fontFamily: theme.font.medium, color: '#FAFFEF' }}>
+              Open Grocery Manager
+            </Text>
+          </Pressable>
+          <Pressable
+            testID="where-coverage-explore"
+            onPress={dismiss}
+            style={{ marginTop: 8, height: 46, width: '100%', borderRadius: 999, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ fontSize: 15, fontFamily: theme.font.medium, color: '#1C0F28' }}>
               Explore the map
             </Text>
           </Pressable>
