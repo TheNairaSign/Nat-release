@@ -15,3 +15,20 @@ export function takeDivaOpening(): FoodCardOpening | null {
   pending = null;
   return opening;
 }
+
+/**
+ * A question to ask as the chat opens, with the context that makes the answer specific
+ * (web navigates to /ai with `initialQuestion` and `initialContext`): "How to divert?"
+ * on a grocery card, or "Make a recipe". Taken once.
+ */
+let pendingAsk: { question: string; context?: Record<string, unknown> } | null = null;
+
+export function askDivaWith(question: string, context?: Record<string, unknown>): void {
+  pendingAsk = { question, context };
+}
+
+export function takeDivaAsk(): { question: string; context?: Record<string, unknown> } | null {
+  const ask = pendingAsk;
+  pendingAsk = null;
+  return ask;
+}

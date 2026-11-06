@@ -10,7 +10,14 @@ export const PROFILE_ACTIVITY = [
     highlight: false,
     icon: 'search',
   },
-  // Web's "My Grocery" (/grocery/history) goes here once the Grocery Manager is built.
+  {
+    id: 'grocery',
+    title: 'My Grocery',
+    subtitle: 'Your scans, expiry dates and reminders',
+    href: '/grocery/history',
+    highlight: false,
+    icon: 'basket',
+  },
   {
     id: 'impact',
     title: 'Green Profile',

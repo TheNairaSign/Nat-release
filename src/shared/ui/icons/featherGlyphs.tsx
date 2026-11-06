@@ -254,3 +254,32 @@ export function XGlyph({ color, size }: FeatherGlyphProps) {
     </Svg>
   );
 }
+
+/** FiMinus */
+export function MinusGlyph({ color, size }: FeatherGlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Line x1="5" y1="12" x2="19" y2="12" stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
+/** FiPlus */
+export function PlusGlyph({ color, size }: FeatherGlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Line x1="12" y1="5" x2="12" y2="19" stroke={color} {...stroke} />
+      <Line x1="5" y1="12" x2="19" y2="12" stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
+/** FiRotateCcw */
+export function UndoGlyph({ color, size }: FeatherGlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Polyline points="1 4 1 10 7 10" stroke={color} {...stroke} />
+      <Path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" stroke={color} {...stroke} />
+    </Svg>
+  );
+}

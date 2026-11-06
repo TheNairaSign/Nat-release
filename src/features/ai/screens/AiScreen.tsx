@@ -30,7 +30,7 @@ import {
   aiHistoryQueryKey,
   aiSuggestionsQueryKey,
 } from '../api/ai-api';
-import { takeDivaOpening } from '../opening';
+import { takeDivaAsk, takeDivaOpening } from '../opening';
 import { AiChatPanel } from '../ui/AiChatPanel';
 import { useSession } from '@/features/auth';
 import { allowanceQueryKey } from '@/features/tokens';
@@ -85,12 +85,17 @@ const CAPABILITY_GLYPHS = {
 } as const;
 
 export function AiScreen({
-  initialQuestion,
+  initialQuestion: linkedQuestion,
   suggestionId,
 }: {
   initialQuestion?: string;
   suggestionId?: string;
 }) {
+  // A question handed over with its context (a grocery card's "How to divert?", "Make a
+  // recipe") opens the chat as a linked question does (web initialQuestion/Context).
+  const [handedAsk] = useState(() => takeDivaAsk());
+  const initialQuestion = handedAsk?.question ?? linkedQuestion;
+  const initialContext = handedAsk?.context;
   const theme = useTheme();
   const { http, navigation, uuid, linking, guestId, location } = usePorts();
   const queryClient = useQueryClient();
@@ -174,6 +179,7 @@ export function AiScreen({
           suggestionId,
           history: [{ id: 'seed-user', role: 'user', text: question }],
           guestId: signedIn ? undefined : await guestId(),
+          context: initialContext,
         });
       } catch (error) {
         return failureReply(error);

@@ -184,7 +184,14 @@ export function HomeScreen({
       />
       <WasteAppsRow
         groceries={groceries}
-        onGrocery={() => comingSoon('The Grocery Manager')}
+        // The list if there is one, else a scan (web groceryEntryPath).
+        onGrocery={() =>
+          guest
+            ? comingSoon('Grocery scanning')
+            : groceries && groceries.length > 0
+              ? navigation.navigate('/grocery/history')
+              : comingSoon('Grocery scanning')
+        }
         onSnapDivert={() => comingSoon('SnapDivert')}
         onWhere={() => navigation.navigate(guest ? '/guest/where' : '/where')}
         onEvents={() => lockOrGo('/campaigns')}

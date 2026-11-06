@@ -22,6 +22,7 @@ import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
 import { ChromeScreen, Text, ThingsMatchMark } from '@/shared/ui';
 import { ChevronGlyph } from '@/shared/ui/icons/glyphs';
+import { BasketGlyph } from '@/shared/ui/icons/groceryGlyphs';
 import {
   BoltGlyph,
   BullhornGlyph,
@@ -47,6 +48,9 @@ function ActivityIcon({
       return <BoltGlyph color={color} size={18} />;
     case 'bullhorn':
       return <BullhornGlyph color={color} size={18} />;
+    // FaShoppingBasket 18
+    case 'basket':
+      return <BasketGlyph color={color} size={18} />;
     default:
       return <LocationSearchingGlyph color={color} size={20} />;
   }

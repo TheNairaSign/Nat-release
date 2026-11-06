@@ -1,2 +1,2 @@
 export { AiScreen } from './screens/AiScreen';
-export { openDivaWith } from './opening';
+export { askDivaWith, openDivaWith } from './opening';
