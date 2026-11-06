@@ -180,17 +180,18 @@ export function HomeScreen({
           navigation.navigate('/ai');
         }}
         onNavigate={(href) => navigation.navigate(href)}
-        onStartScanning={() => comingSoon('Grocery scanning')}
+        // Guests can scan too; the scanner asks them to sign up afterwards.
+        onStartScanning={() => navigation.navigate(guest ? '/guest/ai/grocery' : '/ai/grocery')}
       />
       <WasteAppsRow
         groceries={groceries}
         // The list if there is one, else a scan (web groceryEntryPath).
         onGrocery={() =>
           guest
-            ? comingSoon('Grocery scanning')
+            ? navigation.navigate('/guest/ai/grocery')
             : groceries && groceries.length > 0
               ? navigation.navigate('/grocery/history')
-              : comingSoon('Grocery scanning')
+              : navigation.navigate('/ai/grocery')
         }
         onSnapDivert={() => comingSoon('SnapDivert')}
         onWhere={() => navigation.navigate(guest ? '/guest/where' : '/where')}
