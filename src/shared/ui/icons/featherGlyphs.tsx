@@ -235,3 +235,22 @@ export function MicGlyph({
     </Svg>
   );
 }
+
+/** FiEdit2 */
+export function EditGlyph({ color, size }: FeatherGlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke={color} {...stroke} />
+    </Svg>
+  );
+}
+
+/** FiX */
+export function XGlyph({ color, size }: FeatherGlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Line x1="18" y1="6" x2="6" y2="18" stroke={color} {...stroke} />
+      <Line x1="6" y1="6" x2="18" y2="18" stroke={color} {...stroke} />
+    </Svg>
+  );
+}

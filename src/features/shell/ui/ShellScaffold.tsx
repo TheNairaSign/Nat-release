@@ -6,6 +6,7 @@ import {
   hrefForTab,
   isAiPath,
   isTabLocked,
+  isGroceryAppPath,
   isWasteAppsPath,
   isWherePath,
   tabIdFromPath,
@@ -34,8 +35,12 @@ export function ShellScaffold({
   const { navigation } = usePorts();
   const [collapsed, setCollapsed] = useState(false);
   const hideChrome = hidesConsumerChrome(pathname);
+  const miniApp = isGroceryAppPath(pathname);
   const hideHeader =
-    hideChrome || isWherePath(pathname) || isWasteAppsPath(pathname);
+    hideChrome ||
+    miniApp ||
+    isWherePath(pathname) ||
+    isWasteAppsPath(pathname);
   const hideAi = hideChrome || isAiPath(pathname);
   const activeId = tabIdFromPath(pathname);
 
@@ -88,6 +93,7 @@ export function ShellScaffold({
         />
       )}
       {children}
+      {miniApp ? null : (
       <GlassTabBar
         guest={guest}
         activeId={activeId}
@@ -95,6 +101,7 @@ export function ShellScaffold({
         onToggle={() => setCollapsed((current) => !current)}
         onPressTab={goTab}
       />
+      )}
     </View>
   );
 }

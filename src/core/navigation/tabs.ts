@@ -77,6 +77,23 @@ export function isAiPath(pathname: string): boolean {
   return pathname.startsWith('/ai') || pathname.includes('/ai');
 }
 
+const GROCERY_PATHS = [
+  '/ai/grocery',
+  '/grocery',
+  '/my-grocery',
+  '/snapdivert',
+  '/guest/ai/grocery',
+  '/guest/snapdivert',
+];
+
+/**
+ * The waste mini apps (Grocery Manager, My Grocery, SnapDivert): they bring their own
+ * header and hide NatCycle's header and tab bar (web utils/groceryApp isGroceryAppPath).
+ */
+export function isGroceryAppPath(pathname: string): boolean {
+  return GROCERY_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
 /** The Waste Apps page draws its own header, as the prototype does. */
 export function isWasteAppsPath(pathname: string): boolean {
   return /^(\/guest)?\/waste-apps$/.test(pathname);
