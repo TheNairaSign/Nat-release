@@ -12,7 +12,7 @@ import {
   type GroceryItemStatus,
   type GroceryScan,
 } from '@/core/grocery';
-import { askDivaWith } from '@/features/ai';
+import { askDivaWith, openChatSection } from '@/features/ai';
 import { useQuery, useQueryClient } from '@/shared/api';
 import { readHttpErrorMessage } from '@/shared/api/errors';
 import { usePorts } from '@/shared/hooks/use-ports';
@@ -27,7 +27,7 @@ import {
   updateItem,
   wasteStats,
 } from '../api/grocery-api';
-import { GroceryAppHeader, GroceryNewScan } from '../ui/GroceryAppHeader';
+import { GroceryAppHeader, GroceryHeaderLink, GroceryNewScan } from '../ui/GroceryAppHeader';
 import { GroceryDivaBar } from '../ui/GroceryDivaBar';
 import {
   ExpiryDatePicker,
@@ -233,6 +233,7 @@ export function GroceryHistoryScreen() {
   async function divert(item: GroceryItem) {
     const here = await location.getCurrentPosition().catch(() => null);
     const place = here ?? undefined;
+    openChatSection('grocery');
     askDivaWith(buildDivertQuestion(item, place), buildDivertContext(item, place));
     navigation.navigate('/ai');
   }
@@ -240,6 +241,7 @@ export function GroceryHistoryScreen() {
   function makeRecipe() {
     const request = buildUseUpRequest(expiring);
     if (!request) return;
+    openChatSection('grocery');
     askDivaWith(request.question, request.context);
     navigation.navigate('/ai');
   }
@@ -266,7 +268,14 @@ export function GroceryHistoryScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
-      <GroceryAppHeader right={<GroceryNewScan onPress={newScan} />} />
+      <GroceryAppHeader
+        right={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+            <GroceryHeaderLink label="Recipes" onPress={() => navigation.navigate('/grocery/recipes')} />
+            <GroceryNewScan onPress={newScan} />
+          </View>
+        }
+      />
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140 + insets.bottom }}
       >
@@ -440,6 +449,7 @@ export function GroceryHistoryScreen() {
       <GroceryDivaBar
         items={expiring}
         onAsk={(question) => {
+          openChatSection('grocery');
           askDivaWith(question);
           navigation.navigate('/ai');
         }}

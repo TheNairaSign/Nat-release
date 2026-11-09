@@ -15,7 +15,7 @@ import {
   type SnapCondition,
   type SnapItem,
 } from '@/core/snapdivert';
-import { askDivaWith } from '@/features/ai';
+import { askDivaWith, openChatSection } from '@/features/ai';
 import { GuestSignInModal } from '@/features/auth';
 import { GroceryAppHeader, GroceryHeaderLink, VoiceBars, uploadCartPhoto } from '@/features/grocery';
 import { readHttpErrorMessage } from '@/shared/api/errors';
@@ -239,6 +239,7 @@ export function SnapDivertScreen({ guest = false }: { guest?: boolean }) {
 
   /** DiVA answers in the chat (a guest's free questions count there). */
   const askDiva = (question: string, context?: Record<string, unknown>) => {
+    openChatSection('snapdivert');
     askDivaWith(question, context);
     navigation.navigate(guest ? '/guest/ai' : '/ai');
   };

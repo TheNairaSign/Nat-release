@@ -33,7 +33,7 @@ import {
   aiHistoryQueryKey,
   aiSuggestionsQueryKey,
 } from '../api/ai-api';
-import { takeDivaAsk, takeDivaOpening } from '../opening';
+import { takeChatSection, takeDivaAsk, takeDivaOpening } from '../opening';
 import { AiChatPanel } from '../ui/AiChatPanel';
 import { GuestSignInModal, useSession } from '@/features/auth';
 import { allowanceQueryKey } from '@/features/tokens';
@@ -97,6 +97,9 @@ export function AiScreen({
   // A question handed over with its context (a grocery card's "How to divert?", "Make a
   // recipe") opens the chat as a linked question does (web initialQuestion/Context).
   const [handedAsk] = useState(() => takeDivaAsk());
+  // Grocery Manager, SnapDivert and the general chat each keep their own thread
+  // (web is unaffected: it never sets one, so it still gets the one mixed history).
+  const [section] = useState(() => takeChatSection());
   const initialQuestion = handedAsk?.question ?? linkedQuestion;
   const initialContext = handedAsk?.context;
   const theme = useTheme();
@@ -182,8 +185,8 @@ export function AiScreen({
     queryFn: () => fetchAiPageSuggestions(http),
   });
   const historyQuery = useQuery({
-    queryKey: aiHistoryQueryKey,
-    queryFn: () => fetchChatHistory(http),
+    queryKey: [...aiHistoryQueryKey, section],
+    queryFn: () => fetchChatHistory(http, section),
     enabled: signedIn && chatOpen && localMessages.length === 0 && !initialQuestion,
   });
   const seedQuery = useQuery({
@@ -200,7 +203,7 @@ export function AiScreen({
         };
       }
       if (signedIn) {
-        void persistChatMessage(http, { id: uuid.v4(), role: 'user', text: question });
+        void persistChatMessage(http, { id: uuid.v4(), role: 'user', text: question }, section);
       }
       try {
         return await askAi(http, {
@@ -281,7 +284,7 @@ export function AiScreen({
     const nextHistory = [...earlier, userMessage];
     setLocalMessages(nextHistory);
     setPending(true);
-    if (signedIn) void persistChatMessage(http, userMessage);
+    if (signedIn) void persistChatMessage(http, userMessage, section);
     // A question about "near me": use the position if it's already allowed; if not,
     // the reply gets a prompt to turn location on (web AiChat sendMessage).
     let place: Record<string, unknown> | undefined;
@@ -323,7 +326,7 @@ export function AiScreen({
     // Web saves the assistant message too, so its Continue buttons survive a
     // reload. An error isn't saved (web doesn't either).
     if (!reply.failed && signedIn) {
-      void persistChatMessage(http, assistantMessage);
+      void persistChatMessage(http, assistantMessage, section);
     }
     setLocalMessages([...nextHistory, assistantMessage]);
     setPending(false);
@@ -331,7 +334,7 @@ export function AiScreen({
 
   async function onClear(clearMemory: boolean) {
     setClearOpen(false);
-    await clearChatHistory(http, clearMemory);
+    await clearChatHistory(http, clearMemory, section);
     setLocalMessages([]);
     await historyQuery.refetch();
   }
