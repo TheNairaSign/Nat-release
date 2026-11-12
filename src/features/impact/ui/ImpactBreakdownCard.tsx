@@ -18,6 +18,8 @@ import {
   ShirtGlyph,
 } from '@/shared/ui/icons/materialGlyphs';
 
+export const BREAKDOWN_CARD_BG = '#DCEFE8';
+
 /** `text-xl text-slate-600`, size 20 — with two per-material overrides. */
 const SLATE_600 = '#475569';
 const ICON_COLORS: Partial<Record<BreakdownIcon, string>> = {
@@ -60,7 +62,8 @@ export function BreakdownGlyph({ materialType }: { materialType?: string }) {
 
 /**
  * Port of client/src/pages/dashboard/components/ImpactBreakdownCard.tsx (main 964a78a,
- * prototype Flow 3 HOME – 45): a pale #F3FBFB card, 20pt corners, the CU in a lime
+ * prototype Flow 3 HOME – 45): a mint card (deepened from the prototype's #F3FBFB, which
+ * barely showed against the page), 20pt corners, the CU in a lime
  * #D3FD5D pill. The icon only where a material type is given (the See-all grid);
  * Impact's sideways rows pass none.
  */
@@ -87,7 +90,7 @@ export function ImpactBreakdownCard({
       style={{
         ...(width ? { width } : { flex: 1 }),
         height: 88,
-        backgroundColor: '#F3FBFB',
+        backgroundColor: BREAKDOWN_CARD_BG,
         borderRadius: 20,
         paddingHorizontal: 13,
         paddingTop: 15,

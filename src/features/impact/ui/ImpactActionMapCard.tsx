@@ -10,6 +10,7 @@ import {
 } from '@/core/impact';
 import { useTheme } from '@/shared/theme';
 import { Text } from '@/shared/ui';
+import { NavHomeFilledGlyph } from '@/shared/ui/icons/navBarGlyphs';
 import { WhereMap, type MapMarker } from '@/shared/ui/maps/WhereMap';
 
 /**
@@ -22,26 +23,37 @@ import { WhereMap, type MapMarker } from '@/shared/ui/maps/WhereMap';
  *    pinned bottom-left.
  *  - the single-point caption (the site's own name) and the loading caption.
  */
+/** What was kept from landfill at home, pinned where the person is. */
+export type HomeMapPoint = { lat: number; lng: number; total: number };
+
+const HOME_ID = '__home__';
+
 export function ImpactActionMapCard({
   points,
   loading,
+  home,
+  onTouchingChange,
 }: {
   points: ActionMapPoint[];
   loading: boolean;
+  home?: HomeMapPoint | null;
+  /** True while a finger is on the map, so the page and carousel stop scrolling. */
+  onTouchingChange?: (touching: boolean) => void;
 }) {
   const theme = useTheme();
 
   const maxQty = useMemo(
-    () => points.reduce((m, p) => Math.max(m, p.quantity), 0),
-    [points],
+    () => points.reduce((m, p) => Math.max(m, p.quantity, home?.total ?? 0), 0),
+    [points, home],
   );
 
   // Web calls fitBounds over the points; the native map takes a centre plus a
   // zoom, so the bounding box is converted with web's own zoomForSpan ladder.
   const view = useMemo(() => {
-    if (points.length === 0) return { center: ACTION_MAP_CENTER, zoom: 10 };
-    const lats = points.map((p) => p.lat);
-    const lngs = points.map((p) => p.lng);
+    const all = home ? [...points, { lat: home.lat, lng: home.lng }] : points;
+    if (all.length === 0) return { center: ACTION_MAP_CENTER, zoom: 10 };
+    const lats = all.map((p) => p.lat);
+    const lngs = all.map((p) => p.lng);
     const minLat = Math.min(...lats);
     const maxLat = Math.max(...lats);
     const minLng = Math.min(...lngs);
@@ -53,21 +65,27 @@ export function ImpactActionMapCard({
       },
       zoom: actionMapZoom(maxLng - minLng, maxLat - minLat),
     };
-  }, [points]);
+  }, [points, home]);
 
   const markers = useMemo(
-    () =>
-      points.map((p) => ({
+    () => [
+      ...points.map((p) => ({
         id: p.key,
         lat: p.lat,
         lng: p.lng,
         selected: false,
       })),
-    [points],
+      ...(home ? [{ id: HOME_ID, lat: home.lat, lng: home.lng, selected: false }] : []),
+    ],
+    [points, home],
   );
 
   return (
     <View
+      testID="impact-action-map"
+      onTouchStart={() => onTouchingChange?.(true)}
+      onTouchEnd={() => onTouchingChange?.(false)}
+      onTouchCancel={() => onTouchingChange?.(false)}
       style={{
         height: 440,
         borderRadius: theme.radius.card28,
@@ -87,6 +105,34 @@ export function ImpactActionMapCard({
         onMarkerPress={() => undefined}
       >
         {(marker: MapMarker) => {
+          if (marker.id === HOME_ID && home) {
+            const size = Math.max(36, actionMapCircleSize(home.total, maxQty));
+            return (
+              <View
+                testID="impact-map-home"
+                style={{
+                  width: size,
+                  height: size,
+                  borderRadius: size / 2,
+                  backgroundColor: '#D3FD5D',
+                  borderWidth: 2,
+                  borderColor: '#ffffff',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  shadowColor: '#000',
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  shadowOffset: { width: 0, height: 2 },
+                  elevation: 4,
+                }}
+              >
+                <NavHomeFilledGlyph color="#1E0D2A" />
+                <Text style={{ fontSize: 10, lineHeight: 12, color: '#1E0D2A', fontWeight: '700' }}>
+                  {home.total}
+                </Text>
+              </View>
+            );
+          }
           const point = points.find((p) => p.key === marker.id);
           const size = actionMapCircleSize(point?.quantity ?? 0, maxQty);
           return (
@@ -131,6 +177,7 @@ export function ImpactActionMapCard({
         >
           <Text style={{ fontSize: 15, color: theme.color.text }}>
             {actionMapLabel(points, loading)}
+            {home && home.total > 0 ? ` · ${home.total} at home` : ''}
           </Text>
         </View>
       </View>

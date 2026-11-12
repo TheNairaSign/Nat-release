@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, View } from 'react-native';
 
 import {
@@ -28,7 +28,7 @@ import { useQuery } from '@/shared/api';
 import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
 import { ChromeScreen, Text } from '@/shared/ui';
-import { ImpactBreakdownCard } from '../ui/ImpactBreakdownCard';
+import { BREAKDOWN_CARD_BG, ImpactBreakdownCard } from '../ui/ImpactBreakdownCard';
 import { impactShareText } from '@/core/dropoff';
 import { SnapCarousel } from '@/shared/ui/SnapCarousel';
 import { ImpactActionMapCard } from '../ui/ImpactActionMapCard';
@@ -39,13 +39,33 @@ const CARD_W = 145;
 const CARD_GAP_X = 13;
 const CARD_GAP_Y = 18;
 const CU_EXPLAINER_URL = 'https://www.natcycle.com/carbon-unit';
+const AVATAR = 64;
 
 export function ImpactScreen() {
   const theme = useTheme();
-  const { http, navigation, share, linking } = usePorts();
+  const { http, navigation, share, linking, location } = usePorts();
   const { session } = useSession();
   const userId = session?.userId ?? '';
   const [tab, setTab] = useState<'commits' | 'map'>('commits');
+  const [mapTouching, setMapTouching] = useState(false);
+  // Home diversion has no place of its own, so it's pinned where the person is — only
+  // if they've already allowed location; Impact never asks.
+  const [here, setHere] = useState<{ latitude: number; longitude: number } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        if ((await location.getPermissionStatus()) !== 'granted') return;
+        const position = await location.getCurrentPosition();
+        if (!cancelled && position) setHere(position);
+      } catch {
+        // No position: the map just shows drop-offs.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [location]);
   const profileQuery = useQuery({
     queryKey: impactUserQueryKey,
     queryFn: () => fetchImpactUser(http),
@@ -107,32 +127,40 @@ export function ImpactScreen() {
   const pillValue = { color: '#fff', fontSize: 20, lineHeight: 22, fontFamily: theme.font.bold };
   const pillLabel = { color: '#94a3b8', fontSize: 12, marginTop: 4 };
 
+  const homePoint =
+    here && stats.home > 0
+      ? { lat: here.latitude, lng: here.longitude, total: stats.home }
+      : null;
+
   return (
-    <ChromeScreen>
-      {/* Prototype Flow 3 (HOME – 45): 32pt avatar, 18 bold name, "Since" 12 */}
+    <ChromeScreen scrollEnabled={!mapTouching}>
+      {/* Prototype Flow 3 (HOME – 45) had a 32pt avatar; doubled on feedback (too small
+          to recognise yourself). 18 bold name, "Since" 12. */}
       <View style={{ alignItems: 'center', paddingTop: 17 }}>
         {user?.profilePictureUrl ? (
           <Image
+            testID="impact-avatar"
             source={{ uri: user.profilePictureUrl }}
-            style={{ width: 32, height: 32, borderRadius: 16 }}
+            style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2 }}
           />
         ) : (
           <View
+            testID="impact-avatar"
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 16,
+              width: AVATAR,
+              height: AVATAR,
+              borderRadius: AVATAR / 2,
               backgroundColor: '#D1FF52',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Text style={{ fontFamily: theme.font.bold, fontSize: 12, color: '#000' }}>
+            <Text style={{ fontFamily: theme.font.bold, fontSize: 22, color: '#000' }}>
               {initials}
             </Text>
           </View>
         )}
-        <Text style={{ fontSize: 18, lineHeight: 22, fontFamily: theme.font.bold, color: '#010B02' }}>
+        <Text style={{ marginTop: 8, fontSize: 18, lineHeight: 22, fontFamily: theme.font.bold, color: '#010B02' }}>
           {user?.firstName} {user?.lastName}
         </Text>
         {sinceLabel(user?.createdAt) ? (
@@ -161,15 +189,13 @@ export function ImpactScreen() {
           <Text style={pillValue}>{stats.dropoffs}</Text>
           <Text style={pillLabel}>drop-off</Text>
         </Pressable>
-        {/* Kept out of landfill at home: food used, things SnapDivert diverted. */}
-        <Pressable
-          testID="impact-home"
-          onPress={() => navigation.navigate('/waste-apps')}
-          style={{ flex: 1, alignItems: 'center' }}
-        >
+        {/* Kept out of landfill at home: food used, things SnapDivert diverted. A plain
+            count, not a link to Waste Apps — it reads as a stat, so tapping it shouldn't
+            leave the page. */}
+        <View testID="impact-home" style={{ flex: 1, alignItems: 'center' }}>
           <Text style={pillValue}>{stats.home}</Text>
           <Text style={pillLabel}>home diversion</Text>
-        </Pressable>
+        </View>
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Text style={pillValue}>{stats.bcu}</Text>
           <Text style={pillLabel}>CU</Text>
@@ -204,7 +230,7 @@ export function ImpactScreen() {
                 {[0, 1].map((row) => (
                   <View
                     key={row}
-                    style={{ width: CARD_W, height: 88, borderRadius: 20, backgroundColor: '#F3FBFB' }}
+                    style={{ width: CARD_W, height: 88, borderRadius: 20, backgroundColor: BREAKDOWN_CARD_BG }}
                   />
                 ))}
               </View>
@@ -257,6 +283,7 @@ export function ImpactScreen() {
         cardWidthRatio={0.92}
         padLeft={4}
         gap={12}
+        scrollEnabled={!mapTouching}
       >
         {[
           <ImpactGreenCommitsCard
@@ -270,6 +297,8 @@ export function ImpactScreen() {
             key="map"
             points={actionPoints}
             loading={dropoffsQuery.isPending}
+            home={homePoint}
+            onTouchingChange={setMapTouching}
           />,
         ]}
       </SnapCarousel>

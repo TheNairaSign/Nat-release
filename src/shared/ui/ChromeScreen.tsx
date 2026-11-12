@@ -8,9 +8,12 @@ export function ChromeScreen({
   children,
   bleed = false,
   fill = false,
+  scrollEnabled = true,
 }: {
   children: ReactNode;
   bleed?: boolean;
+  /** False while a nested map is being dragged, so the page doesn't steal the gesture. */
+  scrollEnabled?: boolean;
   /** Let content fill the viewport so a trailing block can be pushed to the
    *  bottom with `marginTop: 'auto'` — the native stand-in for web's fixed
    *  bottom composer on the AI page. */
@@ -29,6 +32,7 @@ export function ChromeScreen({
 
   return (
     <ScrollView
+      scrollEnabled={scrollEnabled}
       style={{ flex: 1, backgroundColor: theme.color.bg }}
       contentContainerStyle={{
         paddingHorizontal: theme.layout.pagePadX,
