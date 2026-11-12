@@ -1,7 +1,9 @@
 import {
   parseAllowance,
+  parsePurchaseHistory,
   parseTokenOffer,
   type Allowance,
+  type PurchaseHistoryEntry,
   type TokenOffer,
 } from '@/core/allowance';
 import { assertOk } from '@/shared/api';
@@ -25,4 +27,15 @@ export async function fetchTokenOffer(http: HttpClient): Promise<TokenOffer> {
   const response = await http.request({ path: '/allowance/tiers' });
   assertOk(response.status, response.body);
   return parseTokenOffer(unwrapDataObject(response.body));
+}
+
+export const purchaseHistoryQueryKey = ['allowance', 'history'] as const;
+
+/** GET /allowance/history: every top-up and tier renewal they've paid for. */
+export async function fetchPurchaseHistory(http: HttpClient): Promise<PurchaseHistoryEntry[]> {
+  const response = await http.request({ path: '/allowance/history' });
+  assertOk(response.status, response.body);
+  const body = response.body as { data?: unknown } | unknown;
+  const data = body && typeof body === 'object' && 'data' in body ? (body as { data: unknown }).data : body;
+  return parsePurchaseHistory(data);
 }

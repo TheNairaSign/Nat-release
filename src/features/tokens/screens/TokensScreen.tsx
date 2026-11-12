@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { tk, usd, type Allowance } from '@/core/allowance';
+import { purchaseLabel, tk, usd, type Allowance } from '@/core/allowance';
 import { useQuery } from '@/shared/api';
 import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
@@ -8,8 +9,16 @@ import { ChromeScreen, Text } from '@/shared/ui';
 import { CheckGlyph } from '@/shared/ui/icons/featherGlyphs';
 import { ChevronGlyph } from '@/shared/ui/icons/glyphs';
 
-import { fetchTokenOffer, tokenOfferQueryKey } from '../api/tokens-api';
+import {
+  fetchPurchaseHistory,
+  fetchTokenOffer,
+  purchaseHistoryQueryKey,
+  tokenOfferQueryKey,
+} from '../api/tokens-api';
 import { useAllowance } from '../hooks/use-allowance';
+
+const historyDate = (iso: string) =>
+  new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
 const day = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, {
@@ -73,6 +82,13 @@ export function TokensScreen() {
   const offer = useQuery({
     queryKey: tokenOfferQueryKey,
     queryFn: () => fetchTokenOffer(http),
+  });
+  const [view, setView] = useState<'plans' | 'history'>('plans');
+  // Members only (a guest has no billing); a bonus list, so its failure hides nothing else.
+  const history = useQuery({
+    queryKey: purchaseHistoryQueryKey,
+    queryFn: () => fetchPurchaseHistory(http),
+    enabled: Boolean(allowance?.billing),
   });
 
   const header = (
@@ -216,7 +232,58 @@ export function TokensScreen() {
         ) : null}
       </View>
 
-      {showTopUps ? (
+      {/* Web Tokens: Plans or History, a toggle right under the card rather than a
+          purchase list buried at the bottom. */}
+      {allowance.billing ? (
+        <PlansHistoryToggle view={view} onChange={setView} />
+      ) : null}
+
+      {view === 'history' ? (
+        <View testID="tokens-history" style={{ marginTop: 20 }}>
+          {(history.data ?? []).length === 0 ? (
+            <View style={{ ...card, paddingHorizontal: 16, paddingVertical: 16 }}>
+              <Text style={{ fontSize: 13, color: '#64748b' }}>
+                {history.isPending
+                  ? 'Loading…'
+                  : 'No purchases yet. Top-ups and tier renewals will show up here.'}
+              </Text>
+            </View>
+          ) : (
+            <View style={card}>
+              {(history.data ?? []).map((entry, i) => (
+                <View
+                  key={`${entry.date}-${i}`}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    paddingHorizontal: 16,
+                    paddingVertical: 14,
+                    borderTopWidth: i === 0 ? 0 : 1,
+                    borderTopColor: 'rgba(0,0,0,0.05)',
+                  }}
+                >
+                  <View style={{ flexShrink: 1 }}>
+                    <Text style={{ fontSize: 14, fontFamily: theme.font.semibold, color: '#111111' }}>
+                      {purchaseLabel(entry)}
+                    </Text>
+                    <Text style={{ marginTop: 2, fontSize: 12, color: '#64748b' }}>
+                      {historyDate(entry.date)}
+                      {entry.pending ? ' · Payment pending' : ''}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 14, fontFamily: theme.font.semibold, color: '#111111' }}>
+                    {usd(entry.priceCents)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      ) : null}
+
+      {view === 'plans' && showTopUps ? (
         <View style={{ marginTop: 24 }}>
           <SectionTitle>Top up</SectionTitle>
           <View style={{ ...card, paddingHorizontal: 16, paddingVertical: 16 }}>
@@ -232,6 +299,7 @@ export function TokensScreen() {
       ) : null}
 
       {/* Where they went */}
+      {view === 'plans' ? (
       <View style={{ marginTop: 24 }}>
         <SectionTitle>Where they went</SectionTitle>
         <View style={card}>
@@ -269,9 +337,10 @@ export function TokensScreen() {
           ))}
         </View>
       </View>
+      ) : null}
 
       {/* Tiers */}
-      {tiers.length > 0 ? (
+      {view === 'plans' && tiers.length > 0 ? (
         <View style={{ marginTop: 24 }}>
           <SectionTitle>Tiers</SectionTitle>
           <View style={{ gap: 10 }}>
@@ -329,5 +398,59 @@ export function TokensScreen() {
         </View>
       ) : null}
     </ChromeScreen>
+  );
+}
+
+/** Web's sliding-pill tab pair (as on Grocery History): Plans | History. */
+function PlansHistoryToggle({
+  view,
+  onChange,
+}: {
+  view: 'plans' | 'history';
+  onChange: (view: 'plans' | 'history') => void;
+}) {
+  const theme = useTheme();
+  return (
+    <View
+      accessibilityRole="tablist"
+      style={{
+        marginTop: 16,
+        flexDirection: 'row',
+        borderRadius: 999,
+        backgroundColor: '#F1F3EF',
+        padding: 4,
+      }}
+    >
+      {(['plans', 'history'] as const).map((key) => {
+        const active = view === key;
+        return (
+          <Pressable
+            key={key}
+            testID={`tokens-tab-${key}`}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            onPress={() => onChange(key)}
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              paddingVertical: 8,
+              borderRadius: 999,
+              backgroundColor: active ? '#ffffff' : 'transparent',
+              boxShadow: active ? '0 1px 3px rgba(16,24,16,0.12)' : undefined,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 14,
+                fontFamily: theme.font.semibold,
+                color: active ? '#010B02' : '#5D6659',
+              }}
+            >
+              {key === 'plans' ? 'Plans' : 'History'}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }

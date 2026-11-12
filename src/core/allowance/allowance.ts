@@ -214,3 +214,38 @@ export const tk = (n: number): string => n.toLocaleString('en-US');
 
 /** "$5.99" */
 export const usd = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
+
+/** One thing a member paid for: a top-up pack, or a tier's renewal (web Tokens History). */
+export type PurchaseHistoryEntry = {
+  type: 'topup' | 'renewal';
+  date: string;
+  priceCents: number;
+  label: string;
+  /** Renewals only: a Stripe invoice can still be open (due, not yet paid). */
+  pending: boolean;
+};
+
+/** The `data` of GET /allowance/history, newest first; rows it can't read are skipped. */
+export function parsePurchaseHistory(raw: unknown): PurchaseHistoryEntry[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((row) => {
+    if (!row || typeof row !== 'object') return [];
+    const r = row as Record<string, unknown>;
+    if (r.type !== 'topup' && r.type !== 'renewal') return [];
+    if (typeof r.date !== 'string' || typeof r.label !== 'string') return [];
+    return [
+      {
+        type: r.type,
+        date: r.date,
+        priceCents: Number(r.priceCents) || 0,
+        label: r.label,
+        pending: r.status === 'pending',
+      },
+    ];
+  });
+}
+
+/** "Basic plan renewal" or "1,000 AI tokens", as the History list shows it. */
+export function purchaseLabel(entry: PurchaseHistoryEntry): string {
+  return entry.type === 'topup' ? entry.label : `${entry.label} renewal`;
+}
