@@ -8,6 +8,9 @@ import {
 import { useTheme } from '@/shared/theme';
 import { Text } from '@/shared/ui/Text';
 
+/** Web hides the organisation filter for now (MapTopPanel SHOW_ORG_INDUSTRY_FILTER). */
+const SHOW_ORG_INDUSTRY_FILTER = false;
+
 export function FilterMenu({
   open,
   selected,
@@ -83,7 +86,7 @@ export function FilterMenu({
                 </Pressable>
               );
             })}
-            {partners.length > 0 ? (
+            {SHOW_ORG_INDUSTRY_FILTER && partners.length > 0 ? (
               <>
                 <View
                   style={{

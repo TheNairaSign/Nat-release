@@ -2,6 +2,7 @@ import {
   mergeWhereMaterialChips,
   type MaterialChipInput,
 } from '@/core/materials';
+import { registerMaterialVisuals } from '@/core/where';
 import { getEnv } from '@/shared/config/env';
 import type { HttpClient } from '@/shared/ports/http';
 
@@ -67,6 +68,14 @@ export async function fetchDisposeChips(http: HttpClient): Promise<string[]> {
   if (thingsMatch.status === 'fulfilled' && thingsMatch.value.status < 300) {
     tm = asChipInputs(unwrapList(thingsMatch.value.body));
   }
+
+  // The rich rows carry URS's icon and colour per material; Where's markers use them,
+  // as web does (registerMaterialVisuals in WhereMapbox fetchMaterialCategories).
+  registerMaterialVisuals(
+    [...primary, ...tm].filter(
+      (item): item is Exclude<MaterialChipInput, string> => typeof item === 'object',
+    ) as { category?: string; name?: string; iconUrl?: string | null; colorHex?: string | null }[],
+  );
 
   return mergeWhereMaterialChips(primary, tm);
 }

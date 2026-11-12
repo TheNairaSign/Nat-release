@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import Mapbox from '@rnmapbox/maps';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { getEnv } from '@/shared/config/env';
@@ -32,6 +32,7 @@ export function WhereMap({
   cameraMode = 'follow',
   frame,
   onZoomChange,
+  flyTo,
 }: {
   center: { latitude: number; longitude: number };
   zoom: number;
@@ -52,10 +53,29 @@ export function WhereMap({
   frame?: MapFrame | null;
   /** The zoom as the person pinches, for markers that change with it. */
   onZoomChange?: (zoom: number) => void;
+  /**
+   * A one-off move, e.g. the locate button. A new `key` flies there even when the
+   * target equals the current `center` — the person may have panned away since, and a
+   * controlled camera with unchanged props would stay where they left it.
+   */
+  flyTo?: { key: number; latitude: number; longitude: number; zoom: number } | null;
 }) {
+  const cameraRef = useRef<Mapbox.Camera>(null);
+
   useEffect(() => {
     Mapbox.setAccessToken(getEnv().mapboxToken);
   }, []);
+
+  useEffect(() => {
+    if (!flyTo) return;
+    cameraRef.current?.setCamera({
+      centerCoordinate: [flyTo.longitude, flyTo.latitude],
+      zoomLevel: flyTo.zoom,
+      animationDuration: 800,
+    });
+    // Only a new key means a new move.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flyTo?.key]);
 
   // The camera moves whenever these change identity, so they're kept stable: a re-render
   // (a reported zoom, a loaded list) mustn't undo the person's own pinch or pan.
@@ -96,17 +116,20 @@ export function WhereMap({
     >
       {cameraMode === 'follow' && frame && bounds ? (
         <Mapbox.Camera
+          ref={cameraRef}
           bounds={bounds}
           animationDuration={900}
         />
       ) : cameraMode === 'follow' ? (
         <Mapbox.Camera
+          ref={cameraRef}
           centerCoordinate={centerCoordinate}
           zoomLevel={zoom}
           animationDuration={700}
         />
       ) : (
         <Mapbox.Camera
+          ref={cameraRef}
           defaultSettings={{
             centerCoordinate: [center.longitude, center.latitude],
             zoomLevel: zoom,

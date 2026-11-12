@@ -45,9 +45,13 @@ import { MAP_DATA_ACCURACY_URL } from '@/shared/config/legalUrls';
 import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
 import { ChromeScreen } from '@/shared/ui';
+import { LocateGlyph } from '@/shared/ui/icons/locateGlyph';
 import { WhereMap } from '@/shared/ui/maps/WhereMap';
 
 export type WhereSignInIntent = 'record' | 'reminder';
+
+/** Phone pins are this share of web's size (45pt at street zoom becomes ~36pt). */
+const PIN_SCALE = 0.8;
 
 export function WhereScreen({
   guest = false,
@@ -102,6 +106,13 @@ export function WhereScreen({
   /** The zoom as the person pinches (markers turn to dots when far out). */
   const [liveZoom, setLiveZoom] = useState(12);
   const [reminderPending, setReminderPending] = useState(false);
+  const [flyTo, setFlyTo] = useState<{
+    key: number;
+    latitude: number;
+    longitude: number;
+    zoom: number;
+  } | null>(null);
+  const [locating, setLocating] = useState(false);
   /** One-shot fly-to-closest after homepage/chip material select. */
   const [materialFocus, setMaterialFocus] = useState<{
     lat: number;
@@ -159,7 +170,7 @@ export function WhereScreen({
     // useLocationSearch searches `searchableData` (all of it), so scoping the
     // query to the active platform/focus here meant a search from the Points
     // card could never return an event — "it doesn't show all the results".
-    if (searchOpen) return searchPlaces(placesQuery.data ?? [], searchQuery);
+    if (searchOpen) return searchPlaces(placesQuery.data ?? [], searchQuery, hasGps ? origin : null);
     return filterPlaces(placesQuery.data ?? [], {
       organization: orgFilter,
       platform,
@@ -172,6 +183,8 @@ export function WhereScreen({
     panelFocus,
     searchOpen,
     searchQuery,
+    hasGps,
+    origin,
   ]);
 
   // Web's useLocationSearch groups organisations and material types above the
@@ -289,6 +302,24 @@ export function WhereScreen({
     return box ? { ...box, padding: { top: 240, bottom: 110, left: 48, right: 48 } } : null;
   }, [panelFocus, selected, hasGps, placesQuery.data, origin]);
 
+  /** The locate button: ask (if needed), find them, fly the map back to where they are. */
+  async function onLocate() {
+    setLocating(true);
+    try {
+      const allowed = await location.requestPermission();
+      const position = allowed ? await location.getCurrentPosition() : null;
+      if (!position) return;
+      setOrigin(position);
+      setHasGps(true);
+      pick(null);
+      setMaterialFocus(null);
+      setZoom(14);
+      setFlyTo({ key: Date.now(), ...position, zoom: 14 });
+    } finally {
+      setLocating(false);
+    }
+  }
+
   async function onRecord(place: WherePlace) {
     const href =
       place.kind === 'simple'
@@ -308,8 +339,10 @@ export function WhereScreen({
 
   function onDirections(place: WherePlace) {
     const platformKey = Platform.OS === 'ios' ? 'ios' : 'android';
+    // A chosen branch (or an event's other location) has its own spot, as on web.
+    const target = branchFocus ?? { lat: place.lat, lng: place.lng };
     void linking.openUrl(
-      directionsUrl(platformKey, place.lat, place.lng, place.name),
+      directionsUrl(platformKey, target.lat, target.lng, place.name),
     );
   }
 
@@ -333,6 +366,7 @@ export function WhereScreen({
           center={camera}
           zoom={cameraZoom}
           frame={eventsFrame}
+          flyTo={flyTo}
           onZoomChange={(z) => setLiveZoom((prev) => (Math.abs(prev - z) >= 0.1 ? z : prev))}
           showsUser={hasGps}
           markers={pins.map((pin) => ({
@@ -378,7 +412,11 @@ export function WhereScreen({
                   // carries its own availability.
                   { ...place, isActive: !pin.inactive },
                   {
-                    size: markerSizeForZoom(cameraZoom, marker.selected),
+                    // The live zoom, as web does: sizing from the camera's requested
+                    // zoom (14, or 16 with a place open) kept every pin full-size as you
+                    // pinched out, so they piled into one big mass. Phones also get
+                    // smaller pins than web's desktop-tuned 45pt.
+                    size: Math.round(markerSizeForZoom(liveZoom, marker.selected) * PIN_SCALE),
                     isHighlighted: marker.selected,
                   },
                 )}
@@ -477,6 +515,32 @@ export function WhereScreen({
               }}
             />
           </View>
+        ) : null}
+        {!selected ? (
+          <Pressable
+            testID="where-locate"
+            accessibilityRole="button"
+            accessibilityLabel="Show my location"
+            disabled={locating}
+            onPress={() => void onLocate()}
+            style={{
+              position: 'absolute',
+              right: 12,
+              bottom: theme.layout.tabBarReserve + insets.bottom + 4,
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: '#ffffff',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: 'rgba(0,0,0,0.08)',
+              opacity: locating ? 0.6 : 1,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            }}
+          >
+            <LocateGlyph color={hasGps ? '#1A73E8' : '#475569'} size={22} />
+          </Pressable>
         ) : null}
         {!selected ? (
           <Pressable

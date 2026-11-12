@@ -31,6 +31,8 @@ export function WhereMap({
   frame?: unknown;
   /** Native only: the live zoom. */
   onZoomChange?: (zoom: number) => void;
+  /** Native only: a one-off camera move. */
+  flyTo?: unknown;
   cameraMode?: 'follow' | 'initial';
   center: { latitude: number; longitude: number };
   zoom: number;

@@ -10,6 +10,13 @@
  * `glyph` onto a component from shared/ui/icons.
  */
 
+import {
+  hexLuminance,
+  hexToRgb,
+  normalizeColorHex,
+  resolveMaterialVisual,
+} from './material-visuals';
+
 /** Matches the web `MarkerShape` union, including pill and hexagon. */
 export type MarkerShape =
   'squircle' | 'circle' | 'hexagon' | 'pill' | 'calendar';
@@ -306,6 +313,8 @@ export type MarkerSpec = {
   shape: MarkerShape;
   color: MarkerColor;
   glyph: GlyphName;
+  /** URS's own icon for the material (black artwork, tinted to `glyphColor`). */
+  iconUrl: string | null;
   /** Colour to paint the glyph itself. */
   glyphColor: string;
   glyphSize: number;
@@ -324,6 +333,13 @@ export type MarkerSpec = {
 
 const WHITE = '#ffffff';
 const DARK = '#1A1A1A';
+
+function colorFromHex(hex: string): MarkerColor | null {
+  const normalized = normalizeColorHex(hex);
+  const rgb = normalized ? hexToRgb(normalized) : null;
+  if (!normalized || !rgb) return null;
+  return { bg: normalized, ring: 'rgba(0,0,0,0.1)', glowRgb: `${rgb.r},${rgb.g},${rgb.b}` };
+}
 
 /**
  * Full render spec for one marker — the mobile equivalent of
@@ -364,8 +380,16 @@ export function resolveMarker(input: {
     .trim();
   const shape = PLATFORM_SHAPES[platformKey] ?? DEFAULT_SHAPE;
 
+  // Web IconEngine: URS's own colour/icon for the material, then the defaults, then the
+  // profile. Platform identity colours (events, mobile units) still win.
+  const visual = resolveMaterialVisual(iconMaterialType || materialType);
+  const visualColor = visual?.colorHex ? colorFromHex(visual.colorHex) : null;
+  const glyphDark = visual?.colorHex
+    ? hexLuminance(visual.colorHex) > 0.62
+    : primary.glyphTone === 'dark';
+
   let color =
-    PLATFORM_COLOR_OVERRIDES[platformKey] ?? primary.color ?? DEFAULT_COLOR;
+    PLATFORM_COLOR_OVERRIDES[platformKey] ?? visualColor ?? primary.color ?? DEFAULT_COLOR;
 
   const isEventPin = platformKey === 'campaign' || platformKey === 'p3';
   if (isEventPin && markerVariant === 'upcoming') color = UPCOMING_EVENT_COLOR;
@@ -379,11 +403,18 @@ export function resolveMarker(input: {
 
   const badgePx = Math.round(size * 0.475);
 
+  // A platform colour override (events) carries its own tone; only material colours
+  // decide the glyph by luminance.
+  const overridden = Boolean(PLATFORM_COLOR_OVERRIDES[platformKey]) || isInactive;
+  const darkGlyph = overridden ? primary.glyphTone === 'dark' : glyphDark;
+
   return {
     shape,
     color,
     glyph: primary.glyph,
-    glyphColor: primary.glyphTone === 'dark' ? DARK : WHITE,
+    // Events keep their calendar; a URS icon only replaces a material's glyph.
+    iconUrl: isEventPin ? null : (visual?.iconUrl ?? null),
+    glyphColor: darkGlyph ? DARK : WHITE,
     glyphSize: Math.round(size * 0.58),
     width: isWide
       ? Math.round(size * 1.55)

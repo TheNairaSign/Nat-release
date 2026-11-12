@@ -77,6 +77,26 @@ function httpForWhere(onReminder?: jest.Mock) {
                 materialTypes: ['Food'],
                 location: { coordinates: [3.382, 6.532] },
               },
+              {
+                // Built from linked drop-offs: no top-level location at all. Far away,
+                // so it doesn't change the "near you" count.
+                _id: 'c3',
+                name: 'Two-site swap',
+                status: 'active',
+                materialTypes: ['Food'],
+                locations: [
+                  { simpleDropoffLocationId: { name: 'North hall', location: { coordinates: [-73.9, 40.7] } } },
+                  { customLocation: { name: 'South yard', coordinates: [-73.95, 40.65] } },
+                ],
+              },
+              {
+                _id: 'c-hidden',
+                name: 'Hidden one',
+                status: 'active',
+                isHidden: true,
+                materialTypes: ['Food'],
+                location: { coordinates: [3.383, 6.533] },
+              },
             ],
           },
         };
@@ -96,6 +116,26 @@ const locationPort = {
 };
 
 describe('WhereScreen', () => {
+  it('pins an event at each of its linked locations, and skips hidden ones', async () => {
+    await renderWithProviders(<WhereScreen initialFocus="events" />, {
+      ports: { http: httpForWhere(), location: locationPort },
+    });
+    await waitFor(() => expect(screen.getByTestId('where-place-c3')).toBeTruthy());
+    expect(screen.getByTestId('where-place-c3::0')).toBeTruthy();
+    expect(screen.queryByTestId('where-place-c-hidden')).toBeNull();
+  });
+
+  it('has a locate button that finds the person again', async () => {
+    const getCurrentPosition = jest.fn(async () => origin);
+    await renderWithProviders(<WhereScreen />, {
+      ports: { http: httpForWhere(), location: { ...locationPort, getCurrentPosition } },
+    });
+    await waitFor(() => expect(screen.getByTestId('where-locate')).toBeTruthy());
+    const before = getCurrentPosition.mock.calls.length;
+    await fireEvent.press(screen.getByTestId('where-locate'));
+    await waitFor(() => expect(getCurrentPosition.mock.calls.length).toBe(before + 1));
+  });
+
   it('shows diversion chrome and applies a type query to chips', async () => {
     await renderWithProviders(<WhereScreen type="Food" />, {
       ports: { http: httpForWhere(), location: locationPort },

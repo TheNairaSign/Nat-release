@@ -16,11 +16,13 @@ import { SnapCarousel } from '@/shared/ui/SnapCarousel';
 
 import { MapSearchPanel } from './MapSearchPanel';
 
-// Web's SnapCardCarousel for Where: `cardWidth="w-[92%]"`, `pl-[3%]` /
-// `pr-[3%]`, `scaleInactive`. Sizing and snapping now live in SnapCarousel;
-// only the 3% side pad is page-specific.
+// Web's SnapCardCarousel for Where (main) is `w-[88%]`, `pl-[4%]`, `pr-[6%]`, `gap-4`,
+// no `scaleInactive`. On a phone that leaves ~12pt of the Events card showing, which
+// feedback said reads as no card at all, so the card is a little narrower here (84%,
+// 12pt gap: ~30pt of Events peeks in). The old 92% card shrunk the inactive one too.
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const SIDE_PAD = Math.round(SCREEN_WIDTH * 0.03);
+const PAD_LEFT = Math.round(SCREEN_WIDTH * 0.04);
+const PAD_RIGHT = Math.round(SCREEN_WIDTH * 0.06);
 
 export function MapTopPanel({
   focus,
@@ -111,11 +113,11 @@ export function MapTopPanel({
         onActiveIndexChange={(index) =>
           onFocus(index === 0 ? 'points' : 'events')
         }
-        cardWidthRatio={0.92}
+        cardWidthRatio={0.84}
         scrollEnabled={!chipGesture}
-        padLeft={SIDE_PAD}
+        padLeft={PAD_LEFT}
+        padRight={PAD_RIGHT}
         gap={12}
-        scaleInactive
       >
         {[
           <View

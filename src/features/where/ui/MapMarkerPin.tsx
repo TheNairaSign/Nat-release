@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { Image, View } from 'react-native';
 
 import { markerRadius, type MarkerSpec } from '@/core/where';
 import { MaterialGlyph } from '@/shared/ui/icons/materialGlyphRegistry';
@@ -78,11 +78,26 @@ export function MapMarkerPin({ spec }: { spec: MarkerSpec }) {
           boxShadow: markerShadow(color.glowRgb, showRing, opacity < 1),
         }}
       >
-        <MaterialGlyph
-          name={spec.glyph}
-          color={spec.glyphColor}
-          size={spec.glyphSize}
-        />
+        {spec.iconUrl ? (
+          // URS's own icon is black artwork; web turns it white with a CSS filter,
+          // native does the same with tintColor.
+          <Image
+            testID="where-pin-urs-icon"
+            source={{ uri: spec.iconUrl }}
+            style={{
+              width: spec.glyphSize,
+              height: spec.glyphSize,
+              tintColor: spec.glyphColor,
+            }}
+            resizeMode="contain"
+          />
+        ) : (
+          <MaterialGlyph
+            name={spec.glyph}
+            color={spec.glyphColor}
+            size={spec.glyphSize}
+          />
+        )}
       </View>
 
       {secondary ? (

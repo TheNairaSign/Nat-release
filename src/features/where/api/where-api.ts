@@ -6,6 +6,7 @@ import {
   formatCampaignHours,
   formatCampaignSchedule,
   getCampaignId,
+  isCampaignShownOnEventsMap,
   getCampaignPhase,
   haversineKm,
   type MapPartner,
@@ -58,6 +59,47 @@ function coordsOf(raw: unknown): { lng: number; lat: number } | null {
   return { lng, lat };
 }
 
+type EventPoint = { lat: number; lng: number; name?: string; address?: string };
+
+/**
+ * Every place an event happens, as web draws them (WhereMapbox campaign markers): each of
+ * `locations[]` — a linked simple drop-off, a linked drop-off, or a custom spot — and only
+ * when there are none, the event's own `location`. Events built from linked locations have
+ * no top-level point at all, which is why they used to vanish from the map.
+ */
+function eventPointsOf(raw: Record<string, unknown>): EventPoint[] {
+  const locations = Array.isArray(raw.locations) ? raw.locations : [];
+  const points: EventPoint[] = [];
+  for (const entry of locations) {
+    if (!entry || typeof entry !== 'object') continue;
+    const loc = entry as Record<string, unknown>;
+    const linked = [loc.simpleDropoffLocationId, loc.dropoffLocationId].find(
+      (value) => value && typeof value === 'object' && coordsOf(value),
+    ) as Record<string, unknown> | undefined;
+    if (linked) {
+      const xy = coordsOf(linked)!;
+      points.push({
+        ...xy,
+        name: typeof linked.name === 'string' ? linked.name : undefined,
+        address: typeof linked.address === 'string' ? linked.address : undefined,
+      });
+      continue;
+    }
+    const custom = loc.customLocation as Record<string, unknown> | undefined;
+    const xy = custom ? coordsOf(custom) : null;
+    if (custom && xy) {
+      points.push({
+        ...xy,
+        name: typeof custom.name === 'string' ? custom.name : undefined,
+        address: typeof custom.address === 'string' ? custom.address : undefined,
+      });
+    }
+  }
+  if (points.length > 0) return points;
+  const own = coordsOf(raw);
+  return own ? [own] : [];
+}
+
 function idOf(raw: Record<string, unknown>): string | null {
   const id = raw.id ?? raw._id ?? raw.googleMapId;
   return typeof id === 'string' && id.length > 0 ? id : null;
@@ -108,6 +150,10 @@ function branchesOf(raw: unknown): WhereBranch[] {
           typeof row.contactNumber === 'string' ? row.contactNumber : undefined,
         isActive: row.isActive !== false,
         images: imagesOf(row.images),
+        whoCanDropOff:
+          typeof row.whoCanDropOff === 'string' ? row.whoCanDropOff : undefined,
+        paymentNote: typeof row.paymentNote === 'string' ? row.paymentNote : undefined,
+        viewCount: Number(row.viewCount) || 0,
       },
     ];
   });
@@ -133,8 +179,10 @@ export async function fetchWherePlaces(
       }`,
       method: 'GET',
     }),
+    // Web's Events slide loads the whole catalogue (`catalog: true`), not a radius around
+    // the person — a 500km radius left the slide empty for most people.
     http.request({
-      path: `/campaigns/map?latitude=${origin.latitude}&longitude=${origin.longitude}&radius=500000&limit=200${campaignQuery}`,
+      path: `/campaigns/map?catalog=true&limit=200${campaignQuery}`,
       method: 'GET',
     }),
   ]);
@@ -254,6 +302,17 @@ export async function fetchWherePlaces(
           typeof raw.whoCanDropOff === 'string' ? raw.whoCanDropOff : undefined,
         contactNumber:
           typeof raw.contactNumber === 'string' ? raw.contactNumber : undefined,
+        bulkMaterials: bulk,
+        website: typeof raw.website === 'string' ? raw.website : undefined,
+        viewCount: Number(raw.viewCount) || 0,
+        maxItemsPerDropOff:
+          raw.maxItemsPerDropOff == null || raw.maxItemsPerDropOff === ''
+            ? undefined
+            : Number(raw.maxItemsPerDropOff),
+        maxItemsUnit:
+          typeof raw.maxItemsUnit === 'string' && raw.maxItemsUnit.trim()
+            ? raw.maxItemsUnit.trim()
+            : undefined,
       });
     }
   }
@@ -263,8 +322,12 @@ export async function fetchWherePlaces(
       if (!row || typeof row !== 'object') continue;
       const raw = row as Record<string, unknown>;
       const id = getCampaignId(raw) ?? idOf(raw);
-      const xy = coordsOf(raw);
-      if (!id || !xy) continue;
+      const [first, ...rest] = eventPointsOf(raw);
+      if (!id || !first) continue;
+      if (!isCampaignShownOnEventsMap(raw as Parameters<typeof isCampaignShownOnEventsMap>[0])) {
+        continue;
+      }
+      const xy = first;
       const materials = strings(raw.materialTypes);
       if (
         materialType &&
@@ -291,9 +354,19 @@ export async function fetchWherePlaces(
         kind: 'campaign',
         id,
         name: nameOf(raw),
-        address: typeof raw.address === 'string' ? raw.address : undefined,
+        address:
+          xy.address ?? (typeof raw.address === 'string' ? raw.address : undefined),
         lat: xy.lat,
         lng: xy.lng,
+        // An event in several places gets a pin at each, the same way a drop-off's
+        // branches do; tapping any opens the event.
+        extraLocations: rest.map((point, index) => ({
+          name: point.name ?? `Location ${index + 2}`,
+          address: point.address,
+          lat: point.lat,
+          lng: point.lng,
+          isActive: true,
+        })),
         organizationName:
           typeof raw.organizationName === 'string'
             ? raw.organizationName

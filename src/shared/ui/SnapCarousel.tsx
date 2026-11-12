@@ -21,6 +21,7 @@ export function SnapCarousel({
   onActiveIndexChange,
   cardWidthRatio = 0.92,
   padLeft = 4,
+  padRight,
   gap = 12,
   scaleInactive = false,
   scrollEnabled = true,
@@ -32,6 +33,8 @@ export function SnapCarousel({
   cardWidthRatio?: number;
   /** Web `padLeftClassName`. */
   padLeft?: number;
+  /** Web `peekRight`; defaults to `padLeft`. */
+  padRight?: number;
   /** Web `gapClassName` (gap-3 = 12). */
   gap?: number;
   /** Web `scaleInactive` — shrinks the non-active card to 0.92. */
@@ -68,7 +71,7 @@ export function SnapCarousel({
         gap,
         paddingLeft: padLeft,
         // Trailing room so the final card can still snap flush.
-        paddingRight: padLeft,
+        paddingRight: padRight ?? padLeft,
       }}
       onMomentumScrollEnd={(event) => {
         if (interval <= 0) return;

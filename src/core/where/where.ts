@@ -6,7 +6,7 @@ export const DEFAULT_MAP_CENTER = {
 export const WHERE_FILTERS = [
   { id: 'all', label: 'All locations' },
   { id: 'static', label: 'Facilities' },
-  { id: 'simple', label: 'Static drop-offs' },
+  { id: 'simple', label: 'Quick drop-offs' },
   { id: 'mobile', label: 'Waste events' },
 ] as const;
 
@@ -26,6 +26,10 @@ export type WhereBranch = {
    *  `simpleDropOffLocation.extraLocations[].images` ({ public_id, url }),
    *  and web prefers them over the parent location's images. */
   images?: string[];
+  /** A branch's own terms; web falls back to the main location's payment note. */
+  whoCanDropOff?: string;
+  paymentNote?: string;
+  viewCount?: number;
 };
 
 export type WherePlace = {
@@ -53,6 +57,14 @@ export type WherePlace = {
   schedule?: string;
   hours?: string;
   whoCanAttend?: string;
+  /** Simple drop-offs: every material they take (the card lists them; `materials` is
+   *  just the two the marker shows). */
+  bulkMaterials?: string[];
+  /** How many times the place's card has been opened (shown when it's unavailable). */
+  viewCount?: number;
+  /** "Per drop-off" limit, e.g. 5 bags. */
+  maxItemsPerDropOff?: number;
+  maxItemsUnit?: string;
 };
 
 export type MapPartner = {
@@ -169,20 +181,35 @@ export function filterPlaces(
   });
 }
 
+/** How many places the empty search lists, closest first (web nearbyResults). */
+export const NEARBY_RESULTS_LIMIT = 40;
+
+/**
+ * Web useLocationSearch: every word of the query must appear somewhere in the place's
+ * name, address, organisation or materials ("plastic hartford" finds a Hartford plastic
+ * drop-off), and results come nearest first. With no query, the 40 closest places.
+ */
 export function searchPlaces(
   places: WherePlace[],
   query: string,
+  origin?: { latitude: number; longitude: number } | null,
 ): WherePlace[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return places;
-  return places.filter((place) => {
-    if (place.name.toLowerCase().includes(q)) return true;
-    if (place.address?.toLowerCase().includes(q)) return true;
-    if (place.organizationName?.toLowerCase().includes(q)) return true;
-    return place.materials.some((material) =>
-      material.toLowerCase().includes(q),
-    );
+  const byDistance = (list: WherePlace[]) => {
+    if (!origin) return list;
+    const distance = (place: WherePlace) =>
+      haversineKm(origin.latitude, origin.longitude, place.lat, place.lng);
+    return [...list].sort((a, b) => distance(a) - distance(b));
+  };
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return byDistance(places).slice(0, NEARBY_RESULTS_LIMIT);
+  const matches = places.filter((place) => {
+    const text = [place.name, place.address, place.organizationName, ...place.materials]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return words.every((word) => text.includes(word));
   });
+  return byDistance(matches);
 }
 
 export function pickPlaceById(

@@ -47,5 +47,11 @@ export {
   formatCampaignSchedule,
   getCampaignId,
   getCampaignPhase,
+  isCampaignShownOnEventsMap,
 } from './campaign';
 export { isCoveredPosition } from './coverage';
+export {
+  registerMaterialVisuals,
+  resolveMaterialVisual,
+  type MaterialVisual,
+} from './material-visuals';

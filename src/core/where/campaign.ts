@@ -163,3 +163,46 @@ export function getCampaignId(campaign: {
 }): string | undefined {
   return campaign.id || campaign._id;
 }
+
+/** The last day the event is open, for deciding how long an ended one stays listed. */
+export function getCampaignLastOpenDay(campaign: CampaignLike): Date | null {
+  const keys = openDateKeys(campaign);
+  if (keys.length > 0) {
+    const last = keys[keys.length - 1];
+    const d = new Date(`${last}T23:59:59.999Z`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  if (campaign.endDate) {
+    const end = new Date(campaign.endDate);
+    return Number.isNaN(end.getTime()) ? null : end;
+  }
+  return null;
+}
+
+/** Web isCampaignWithinRetention: an ended event stays on the map `days` after it closes. */
+export function isCampaignWithinRetention(
+  campaign: CampaignLike,
+  days = 3,
+  now: Date = new Date(),
+): boolean {
+  if (getCampaignPhase(campaign, now) !== 'ended') return true;
+  const last = getCampaignLastOpenDay(campaign);
+  if (!last) return false;
+  const cutoff = new Date(last);
+  cutoff.setDate(cutoff.getDate() + days);
+  return now <= cutoff;
+}
+
+/**
+ * Web isCampaignShownOnEventsMap: active or completed, not hidden, not cancelled, and an
+ * ended one only within 3 days of closing. (Coordinates are checked by the caller.)
+ */
+export function isCampaignShownOnEventsMap(
+  campaign: CampaignLike & { isHidden?: boolean },
+  now: Date = new Date(),
+): boolean {
+  if (campaign.isHidden === true) return false;
+  if (campaign.status === 'cancelled') return false;
+  if (campaign.status !== 'active' && campaign.status !== 'completed') return false;
+  return isCampaignWithinRetention(campaign, 3, now);
+}
