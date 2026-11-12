@@ -1,4 +1,5 @@
 import { allowanceUsedUpFrom } from '@/core/allowance';
+import type { ChatSection } from '../opening';
 import {
   normalizeAiImages,
   parseAiResponse,
@@ -43,8 +44,14 @@ export async function fetchAiPageSuggestions(
     .slice(0, 8);
 }
 
-export async function fetchChatHistory(http: HttpClient): Promise<AiMessage[]> {
-  const response = await http.request({ path: '/chat', method: 'GET' });
+export async function fetchChatHistory(
+  http: HttpClient,
+  section: ChatSection,
+): Promise<AiMessage[]> {
+  const response = await http.request({
+    path: `/chat?section=${section}`,
+    method: 'GET',
+  });
   if (response.status >= 300) return [];
   return unwrapList(response.body).flatMap((item, index) => {
     if (!item || typeof item !== 'object') return [];
@@ -191,6 +198,7 @@ export async function askAi(
 export async function persistChatMessage(
   http: HttpClient,
   message: AiMessage,
+  section: ChatSection,
 ): Promise<void> {
   await http.request({
     path: '/chat',
@@ -200,6 +208,7 @@ export async function persistChatMessage(
         id: message.id,
         text: message.text,
         sender: message.role === 'user' ? 'user' : 'ai',
+        section,
         timestamp: message.timestamp ?? new Date().toISOString(),
         ...(message.tools && message.tools.length > 0
           ? { tools: message.tools }
@@ -221,10 +230,11 @@ export async function persistChatMessage(
 export async function clearChatHistory(
   http: HttpClient,
   clearMemory: boolean,
+  section: ChatSection,
 ): Promise<void> {
   const env = getEnv();
   await Promise.allSettled([
-    http.request({ path: '/chat', method: 'DELETE' }),
+    http.request({ path: `/chat?section=${section}`, method: 'DELETE' }),
     clearMemory
       ? http.request({
           path: `${env.aiApiUrl}/chat/clear`,

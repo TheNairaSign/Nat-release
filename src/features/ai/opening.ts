@@ -32,3 +32,22 @@ export function takeDivaAsk(): { question: string; context?: Record<string, unkn
   pendingAsk = null;
   return ask;
 }
+
+/**
+ * Which mini-app's thread the chat should open into, so Grocery Manager, SnapDivert
+ * and the general "Ask DiVA" each keep their own history instead of one mixed feed.
+ * Set right before navigating to /ai; 'general' when nothing was set.
+ */
+export type ChatSection = 'grocery' | 'snapdivert' | 'general';
+
+let pendingSection: ChatSection | null = null;
+
+export function openChatSection(section: ChatSection): void {
+  pendingSection = section;
+}
+
+export function takeChatSection(): ChatSection {
+  const section = pendingSection ?? 'general';
+  pendingSection = null;
+  return section;
+}

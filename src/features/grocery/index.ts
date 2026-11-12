@@ -1,4 +1,5 @@
 export { GroceryHistoryScreen } from './screens/GroceryHistoryScreen';
+export { GroceryRecipeHistoryScreen } from './screens/GroceryRecipeHistoryScreen';
 export { GroceryScannerScreen } from './screens/GroceryScannerScreen';
 // Shared with SnapDivert, which uses the same mini-app chrome.
 export { GroceryAppHeader, GroceryHeaderLink, GroceryHeaderPrimary } from './ui/GroceryAppHeader';

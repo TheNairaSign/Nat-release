@@ -26,7 +26,7 @@ function httpForAi(ask: (call: Call) => { status: number; body: unknown }) {
         }
         if (path.includes('/suggestions')) return { status: 200, body: { data: [] } };
         if (path.includes('/ask')) return ask(call);
-        if (path === '/chat') return { status: 200, body: { data: [] } };
+        if (path.startsWith('/chat')) return { status: 200, body: { data: [] } };
         return { status: 200, body: {} };
       },
     },

@@ -8,7 +8,7 @@ import {
   type SnapItem,
   type SnapStatus,
 } from '@/core/snapdivert';
-import { askDivaWith } from '@/features/ai';
+import { askDivaWith, openChatSection } from '@/features/ai';
 import {
   GroceryAppHeader,
   GroceryHeaderPrimary,
@@ -215,6 +215,7 @@ export function SnapDivertHistoryScreen() {
                 onSettle={(status) => void settle(item, status)}
                 onDivert={() => {
                   const chat = buildSnapDivertChat(item);
+                  openChatSection('snapdivert');
                   askDivaWith(chat.question, chat.context);
                   navigation.navigate('/ai');
                 }}
