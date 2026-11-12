@@ -35,12 +35,20 @@ import {
   wherePartnersQueryKey,
   wherePlacesQueryKey,
 } from '../api/where-api';
+import {
+  fetchSavedPlaces,
+  savePlace,
+  savedKey,
+  savedPlacesQueryKey,
+  unsavePlace,
+  type PlaceTargetType,
+} from '../api/saved-api';
 import { FilterMenu } from '../ui/FilterMenu';
 import { LocationSheet } from '../ui/LocationSheet';
 import { MapMarkerPin } from '../ui/MapMarkerPin';
 import { MapTopPanel } from '../ui/MapTopPanel';
 import { WhereCoverageNotice } from '../ui/WhereCoverageNotice';
-import { useQuery } from '@/shared/api';
+import { useQuery, useQueryClient } from '@/shared/api';
 import { MAP_DATA_ACCURACY_URL } from '@/shared/config/legalUrls';
 import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
@@ -159,6 +167,40 @@ export function WhereScreen({
     queryKey: wherePartnersQueryKey,
     queryFn: () => fetchMapPartners(http),
   });
+  // My Places: what's already hearted, so a card's heart starts filled in.
+  const queryClient = useQueryClient();
+  const savedQuery = useQuery({
+    queryKey: savedPlacesQueryKey,
+    queryFn: () => fetchSavedPlaces(http),
+    enabled: !guest,
+  });
+  const savedKeys = useMemo(
+    () => new Set((savedQuery.data ?? []).map((row) => savedKey(row.targetType, row.targetId))),
+    [savedQuery.data],
+  );
+  /** Flips straight away; the saved list is refetched to settle it. */
+  const [savedOverride, setSavedOverride] = useState<Record<string, boolean>>({});
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const isSaved = (type: PlaceTargetType, id: string) => {
+    const key = savedKey(type, id);
+    return savedOverride[key] ?? savedKeys.has(key);
+  };
+  async function toggleSaved(place: WherePlace) {
+    const type: PlaceTargetType = place.kind === 'campaign' ? 'campaign' : 'location';
+    const key = savedKey(type, place.id);
+    const next = !isSaved(type, place.id);
+    setSavedOverride((prev) => ({ ...prev, [key]: next }));
+    setSavingKey(key);
+    try {
+      if (next) await savePlace(http, { targetType: type, targetId: place.id, targetName: place.name });
+      else await unsavePlace(http, type, place.id);
+      await queryClient.invalidateQueries({ queryKey: savedPlacesQueryKey });
+    } catch {
+      setSavedOverride((prev) => ({ ...prev, [key]: !next }));
+    } finally {
+      setSavingKey(null);
+    }
+  }
 
   const selected =
     picked === undefined
@@ -513,6 +555,12 @@ export function WhereScreen({
               onReminder={() => {
                 void onReminder(selected);
               }}
+              saved={isSaved(selected.kind === 'campaign' ? 'campaign' : 'location', selected.id)}
+              savingSaved={
+                savingKey ===
+                savedKey(selected.kind === 'campaign' ? 'campaign' : 'location', selected.id)
+              }
+              onToggleSave={() => void toggleSaved(selected)}
             />
           </View>
         ) : null}

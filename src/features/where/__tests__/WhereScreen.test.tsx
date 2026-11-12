@@ -5,9 +5,16 @@ import { renderWithProviders } from '@/test/render';
 
 const origin = { latitude: 6.5244, longitude: 3.3792 };
 
-function httpForWhere(onReminder?: jest.Mock) {
+function httpForWhere(onReminder?: jest.Mock, onCall?: jest.Mock) {
   return {
-    request: async ({ path }: { path: string; method?: string }) => {
+    request: async ({ path, method, body }: { path: string; method?: string; body?: unknown }) => {
+      onCall?.({ path, method, body });
+      if (path === '/saved-places' && method !== 'POST') {
+        return { status: 200, body: { data: [{ _id: 's1', targetType: 'location', targetId: 'center-1', targetName: 'Recycling center' }] } };
+      }
+      if (path === '/saved-places' || path === '/suggested-edits') {
+        return { status: 201, body: { data: {} } };
+      }
       if (path === '/materials/primary-types') {
         return {
           status: 200,
@@ -123,6 +130,47 @@ describe('WhereScreen', () => {
     await waitFor(() => expect(screen.getByTestId('where-place-c3')).toBeTruthy());
     expect(screen.getByTestId('where-place-c3::0')).toBeTruthy();
     expect(screen.queryByTestId('where-place-c-hidden')).toBeNull();
+  });
+
+  it('hearts a place and starts filled when it is already saved', async () => {
+    const onCall = jest.fn();
+    await renderWithProviders(<WhereScreen />, {
+      ports: { http: httpForWhere(undefined, onCall), location: locationPort },
+    });
+    await waitFor(() => expect(screen.getByTestId('where-place-simple-1')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('where-place-simple-1'));
+    const heart = screen.getByTestId('where-save');
+    expect(heart.props.accessibilityState.selected).toBe(false);
+    await fireEvent.press(heart);
+    await waitFor(() =>
+      expect(onCall).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: '/saved-places',
+          method: 'POST',
+          body: expect.objectContaining({ targetType: 'location', targetId: 'simple-1' }),
+        }),
+      ),
+    );
+  });
+
+  it('sends a suggested edit for the open place', async () => {
+    const onCall = jest.fn();
+    await renderWithProviders(<WhereScreen />, {
+      ports: { http: httpForWhere(undefined, onCall), location: locationPort },
+    });
+    await waitFor(() => expect(screen.getByTestId('where-place-center-1')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('where-place-center-1'));
+    expect(screen.getByTestId('where-save').props.accessibilityState.selected).toBe(true);
+    await fireEvent.press(screen.getByTestId('where-suggest-edit'));
+    await fireEvent.changeText(screen.getByTestId('where-suggest-edit-input'), 'Closed on Sundays now');
+    await fireEvent.press(screen.getByTestId('where-suggest-edit-send'));
+    await waitFor(() => expect(screen.getByText('Thanks for the heads up')).toBeTruthy());
+    expect(onCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: '/suggested-edits',
+        body: expect.objectContaining({ targetId: 'center-1', message: 'Closed on Sundays now' }),
+      }),
+    );
   });
 
   it('has a locate button that finds the person again', async () => {

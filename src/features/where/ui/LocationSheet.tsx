@@ -19,6 +19,8 @@ import { Text } from '@/shared/ui/Text';
 
 import { AttendButton } from './AttendButton';
 import { EventMaterialBlock } from './EventMaterialBlock';
+import { SaveToggle } from './SaveToggle';
+import { SuggestEditLink } from './SuggestEdit';
 
 /**
  * The card for a tapped place, ported from web main's WhereMapbox popups: one for a
@@ -43,6 +45,10 @@ export function LocationSheet(props: {
   onFocusBranch?: (coords: { lat: number; lng: number } | null) => void;
   /** Branch pin the user tapped on the map, so the card opens on it. */
   initialBranchIndex?: number | null;
+  /** My Places: whether it's bookmarked, and the heart's handler (absent: no heart). */
+  saved?: boolean;
+  savingSaved?: boolean;
+  onToggleSave?: () => void;
 }) {
   if (props.place.kind === 'campaign') return <EventCard {...props} />;
   if (props.place.kind === 'simple') return <QuickDropCard {...props} />;
@@ -140,12 +146,39 @@ function Labelled({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+/** The heart that bookmarks this place, at the end of each card's button row. A guest is
+ *  asked to sign in. */
+function Heart({ guest, onRequireSignIn, saved, savingSaved, onToggleSave }: CardProps) {
+  if (!onToggleSave) return null;
+  return (
+    <SaveToggle
+      saved={Boolean(saved)}
+      busy={savingSaved}
+      onToggle={() => (guest ? onRequireSignIn?.() : onToggleSave())}
+    />
+  );
+}
+
+/** "Suggest an edit" under each card, as on web. */
+function Suggest({ place, guest, onRequireSignIn }: CardProps) {
+  return (
+    <SuggestEditLink
+      targetType={place.kind === 'campaign' ? 'campaign' : 'location'}
+      targetId={place.id}
+      targetName={place.name}
+      guest={guest}
+      onRequireSignIn={onRequireSignIn}
+    />
+  );
+}
+
 // ─── Drop-off centre ────────────────────────────────────────────────────────────
 
 /** Web "Selected Location Details Card": a white card, header with a type badge, big photo
  *  strip, blue/cyan material chips, "Accepted Items", address and website lines, and
  *  Record + Directions as rounded-xl buttons. */
-function CentreCard({ place, onClose, onRecord, onDirections }: CardProps) {
+function CentreCard(props: CardProps) {
+  const { place, onClose, onRecord, onDirections } = props;
   const theme = useTheme();
   const { linking } = usePorts();
   const [primary, secondary] = place.materials;
@@ -351,6 +384,10 @@ function CentreCard({ place, onClose, onRecord, onDirections }: CardProps) {
             Directions
           </Text>
         </Pressable>
+        <Heart {...props} />
+      </View>
+      <View style={{ paddingBottom: 12, marginTop: -8 }}>
+        <Suggest {...props} />
       </View>
     </View>
   );
@@ -398,14 +435,8 @@ function Chip({ label, bg, fg, border }: { label: string; bg: string; fg: string
  *  view count, branches, small thumbnails, the lime materials panel, then a two-column
  *  block — address / hours / phone on the left, payment / per drop-off / who / website on
  *  the right — and Record + Directions as pills. Branch fields follow the chosen branch. */
-function QuickDropCard({
-  place,
-  onClose,
-  onRecord,
-  onDirections,
-  onFocusBranch,
-  initialBranchIndex = null,
-}: CardProps) {
+function QuickDropCard(props: CardProps) {
+  const { place, onClose, onRecord, onDirections, onFocusBranch, initialBranchIndex = null } = props;
   const theme = useTheme();
   const { linking } = usePorts();
   const { height: windowHeight } = useWindowDimensions();
@@ -739,6 +770,10 @@ function QuickDropCard({
           <LocationArrowGlyph color="#1A1A1A" size={12} />
           <Text style={{ fontSize: 13, fontFamily: theme.font.semibold, color: '#1A1A1A' }}>Directions</Text>
         </Pressable>
+        <Heart {...props} />
+      </View>
+      <View style={{ paddingBottom: 10 }}>
+        <Suggest {...props} />
       </View>
     </View>
   );
@@ -830,16 +865,17 @@ const PHASE_UI = {
 /** Web CampaignDetailsCard: phase-tinted card, cover photo with the phase badge, then
  *  schedule / who / phone / payment each beside its icon, the description, the lime
  *  materials block, the address, "I'll attend", and Remind me + Directions. */
-function EventCard({
-  place,
-  reminderPending,
-  onClose,
-  onDirections,
-  onReminder,
-  guest = false,
-  onRequireSignIn,
-  initialBranchIndex = null,
-}: CardProps) {
+function EventCard(props: CardProps) {
+  const {
+    place,
+    reminderPending,
+    onClose,
+    onDirections,
+    onReminder,
+    guest = false,
+    onRequireSignIn,
+    initialBranchIndex = null,
+  } = props;
   const theme = useTheme();
   const { linking } = usePorts();
   const phase = place.phase ?? 'live';
@@ -1043,7 +1079,9 @@ function EventCard({
               Directions
             </Text>
           </Pressable>
+          <Heart {...props} />
         </View>
+        <Suggest {...props} />
       </ScrollView>
     </View>
   );

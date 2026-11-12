@@ -34,6 +34,14 @@ export const PROFILE_ACTIVITY = [
     highlight: true,
     icon: 'bullhorn',
   },
+  {
+    id: 'saved-places',
+    title: 'My Places',
+    subtitle: "Locations and events you've saved",
+    href: '/saved-places',
+    highlight: false,
+    icon: 'pin',
+  },
 ] as const;
 
 export function displayName(firstName?: string, lastName?: string): string {

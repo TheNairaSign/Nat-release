@@ -31,6 +31,7 @@ import {
   LocationSearchingGlyph,
   SignOutGlyph,
 } from '@/shared/ui/icons/uiGlyphs';
+import { NavMapMarkerGlyph } from '@/shared/ui/icons/navBarGlyphs';
 
 /** Past this long the page shows anyway (web Profile.tsx LOAD_LIMIT_MS). */
 const LOAD_LIMIT_MS = 4000;
@@ -51,6 +52,9 @@ function ActivityIcon({
     // FaShoppingBasket 18
     case 'basket':
       return <BasketGlyph color={color} size={18} />;
+    // FaMapMarkerAlt 18
+    case 'pin':
+      return <NavMapMarkerGlyph color={color} size={18} />;
     default:
       return <LocationSearchingGlyph color={color} size={20} />;
   }
