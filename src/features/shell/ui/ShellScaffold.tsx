@@ -23,11 +23,14 @@ export function ShellScaffold({
   pathname,
   children,
   onLockedTab,
+  photoUrl,
 }: {
   guest: boolean;
   pathname: string;
   children: ReactNode;
   onLockedTab: () => void;
+  /** The member's own photo, shown as the "You" tab. */
+  photoUrl?: string;
 }) {
   const theme = useTheme();
   const { navigation } = usePorts();
@@ -91,6 +94,7 @@ export function ShellScaffold({
         guest={guest}
         activeId={activeId}
         collapsed={collapsed}
+        photoUrl={photoUrl}
         onToggle={() => setCollapsed((current) => !current)}
         onPressTab={goTab}
       />

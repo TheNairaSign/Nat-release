@@ -8,6 +8,7 @@ import {
   useSession,
 } from '@/features/auth';
 import { useRegisterPushToken } from '@/features/notifications';
+import { useProfilePhoto } from '@/features/profile';
 import { ShellScaffold } from '@/features/shell';
 import { Screen, Text } from '@/shared/ui';
 
@@ -16,7 +17,9 @@ export default function AppGate() {
   const { session, hydrated } = useSession();
   const pathname = usePathname();
   const [guestModal, setGuestModal] = useState(false);
-  useRegisterPushToken(Boolean(hydrated && isAuthenticated(session)));
+  const signedIn = Boolean(hydrated && isAuthenticated(session));
+  useRegisterPushToken(signedIn);
+  const photoUrl = useProfilePhoto(signedIn);
 
   if (!hydrated) {
     return (
@@ -34,6 +37,7 @@ export default function AppGate() {
     <ShellScaffold
       guest={false}
       pathname={pathname}
+      photoUrl={photoUrl}
       onLockedTab={() => setGuestModal(true)}
     >
       <Stack screenOptions={{ headerShown: false }} />

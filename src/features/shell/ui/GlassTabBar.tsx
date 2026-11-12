@@ -1,4 +1,4 @@
-import { Pressable, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -8,12 +8,8 @@ import {
 } from '@/core/navigation';
 import { useTheme } from '@/shared/theme';
 import { ChevronGlyph } from '@/shared/ui/icons/glyphs';
-import { MapPinGlyph } from '@/shared/ui/icons/featherGlyphs';
-import {
-  NavHomeGlyph,
-  NavStarGlyph,
-  NavUserGlyph,
-} from '@/shared/ui/icons/navGlyphs';
+import { NavHomeFilledGlyph, NavMapMarkerGlyph } from '@/shared/ui/icons/navBarGlyphs';
+import { NavStarGlyph, NavUserGlyph } from '@/shared/ui/icons/navGlyphs';
 import { GlassSurface } from '@/shared/ui/GlassSurface';
 import { Text } from '@/shared/ui/Text';
 
@@ -21,18 +17,20 @@ export function GlassTabBar({
   guest,
   activeId,
   collapsed,
+  photoUrl,
   onToggle,
   onPressTab,
 }: {
   guest: boolean;
   activeId: ConsumerTabId;
   collapsed: boolean;
+  photoUrl?: string;
   onToggle: () => void;
   onPressTab: (id: ConsumerTabId) => void;
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const bottomPad = Math.max(theme.space[3], insets.bottom);
+  const bottomPad = Math.max(12, insets.bottom);
 
   return (
     <View
@@ -71,8 +69,7 @@ export function GlassTabBar({
 
       <View
         style={{
-          paddingHorizontal: theme.layout.pagePadX,
-          paddingBottom: bottomPad,
+          paddingHorizontal: 39 / 2,
           transform: [{ translateY: collapsed ? 220 : 0 }],
         }}
       >
@@ -100,24 +97,24 @@ export function GlassTabBar({
           <ChevronGlyph color="rgba(255,255,255,0.7)" direction="down" />
         </Pressable>
 
-        {/* Real glassmorphism: web blurs the backdrop with
-            `backdrop-filter: blur(20px) saturate(180%)` and paints
-            rgba(255,255,255,0.55) over it. A flat translucent fill alone —
-            which is what this was — never looks like glass. */}
+        {/* Web's MobileNav (new prototype): 39pt narrower than the screen, flush to the
+            bottom, top corners only, white at 52% over a blur. Plain icons — #1E0D2A for
+            the current page, #CCCCCC otherwise — and #707070 12pt labels. No discs. */}
         <GlassSurface
           testID="glass-tab-bar"
           style={{
-            borderRadius: theme.layout.tabBarRadius,
-            borderWidth: 1,
-            borderColor: theme.glass.border,
-            ...theme.shadow.glassNav,
+            alignSelf: 'center',
+            width: '100%',
+            maxWidth: 511,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
           }}
           contentStyle={{
-            paddingHorizontal: theme.space[2],
-            paddingVertical: theme.space[3],
+            paddingTop: 9,
+            paddingBottom: bottomPad,
             flexDirection: 'row',
             justifyContent: 'space-around',
-            alignItems: 'center',
+            alignItems: 'flex-start',
           }}
         >
           {CONSUMER_TABS.map((tab) => {
@@ -129,34 +126,23 @@ export function GlassTabBar({
                 testID={`tab-${tab.id}`}
                 accessibilityRole="button"
                 accessibilityLabel={tab.name}
+                accessibilityState={{ selected: active }}
                 onPress={() => onPressTab(tab.id)}
-                style={{ flex: 1, alignItems: 'center' }}
+                style={{ width: '25%', alignItems: 'center' }}
               >
-                <View
-                  style={{
-                    width: theme.layout.tabDisc,
-                    height: theme.layout.tabDisc,
-                    borderRadius: theme.radius.pill,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: 4,
-                    backgroundColor: locked
-                      ? theme.glass.discLocked
-                      : active
-                        ? theme.color.text
-                        : theme.glass.discInactive,
-                  }}
-                >
+                <View style={{ height: 20, alignItems: 'center', justifyContent: 'center' }}>
                   <TabGlyph
                     id={tab.id}
-                    color={locked ? '#9ca3af' : active ? '#ffffff' : '#4b5563'}
+                    color={active ? '#1E0D2A' : '#CCCCCC'}
+                    photoUrl={guest ? undefined : photoUrl}
                   />
                 </View>
                 <Text
                   style={{
+                    marginTop: 5,
                     fontSize: 12,
-                    fontFamily: theme.font.medium,
-                    color: locked ? '#9ca3af' : active ? '#0f172a' : '#6b7280',
+                    lineHeight: 14,
+                    color: '#707070',
                   }}
                 >
                   {tab.name}
@@ -170,11 +156,27 @@ export function GlassTabBar({
   );
 }
 
-function TabGlyph({ id, color }: { id: ConsumerTabId; color: string }) {
-  // Sizes come from dashboardNav.tsx: BiHome 20, FaStar 18, FiMapPin 20,
-  // FaUser 18. Web mixes icon families here on purpose.
-  if (id === 'home') return <NavHomeGlyph color={color} size={20} />;
+function TabGlyph({
+  id,
+  color,
+  photoUrl,
+}: {
+  id: ConsumerTabId;
+  color: string;
+  photoUrl?: string;
+}) {
+  if (id === 'home') return <NavHomeFilledGlyph color={color} />;
   if (id === 'impact') return <NavStarGlyph color={color} size={18} />;
-  if (id === 'where') return <MapPinGlyph color={color} size={20} />;
-  return <NavUserGlyph color={color} size={18} />;
+  if (id === 'where') return <NavMapMarkerGlyph color={color} size={17} />;
+  // "You" is the person's own photo, as on web.
+  if (photoUrl) {
+    return (
+      <Image
+        testID="tab-you-photo"
+        source={{ uri: photoUrl }}
+        style={{ width: 20, height: 20, borderRadius: 10 }}
+      />
+    );
+  }
+  return <NavUserGlyph color={color} size={16} />;
 }
