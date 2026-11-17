@@ -44,6 +44,7 @@
       "extends": "base",
       "autoIncrement": true,
       "channel": "production",
+      "environment": "production",
       "env": {
         "APP_VARIANT": "production",
         "EXPO_PUBLIC_APP_VARIANT": "production",
