@@ -131,6 +131,19 @@ export function eventsLabel(count: number): string {
   return `${count} event${count === 1 ? '' : 's'} near you`;
 }
 
+/**
+ * Web (Nov 18): under Diversion Points, "4 events nearby take metal →" when a material
+ * is picked; tapping it opens Events, which is already narrowed to that material.
+ */
+export function materialEventsPill(count: number, material: string): string {
+  return `${count} event${count === 1 ? '' : 's'} nearby take ${material.toLowerCase()} →`;
+}
+
+/** The Events card's count while a material is picked: web's "4 nearby take metal". */
+export function materialEventsLabel(count: number, material: string): string {
+  return `${count === 0 ? 'None' : count} nearby take ${material.toLowerCase()}`;
+}
+
 /** Events further than this aren't "near you" (web WhereMapbox NEAR_EVENT_MILES). */
 export const NEAR_EVENT_KM = 15 * 1.609344;
 

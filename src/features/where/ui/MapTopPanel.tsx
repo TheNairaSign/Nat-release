@@ -4,6 +4,8 @@ import { Dimensions, Pressable, ScrollView, View } from 'react-native';
 import { capitalizeChip } from '@/core/materials';
 import {
   eventsLabel,
+  materialEventsLabel,
+  materialEventsPill,
   type MapPanelFocus,
   type OrganizationResult,
   type WherePlace,
@@ -48,6 +50,7 @@ export function MapTopPanel({
   searchOrganizations,
   onSelectOrganization,
   searchMaterialTypes,
+  onShowMaterialEvents,
 }: {
   focus: MapPanelFocus;
   onFocus: (focus: MapPanelFocus) => void;
@@ -73,6 +76,8 @@ export function MapTopPanel({
   searchOrganizations?: OrganizationResult[];
   onSelectOrganization?: (name: string) => void;
   searchMaterialTypes?: string[];
+  /** "N events nearby take metal →": opens Events, already narrowed to the material. */
+  onShowMaterialEvents?: () => void;
 }) {
   const theme = useTheme();
   const iconActive = filterOpen || hasActiveFilters;
@@ -375,6 +380,8 @@ export function MapTopPanel({
             <View
               style={{
                 marginTop: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
                 paddingHorizontal: 20,
                 paddingVertical: 8,
                 borderRadius: theme.radius.pill,
@@ -390,12 +397,60 @@ export function MapTopPanel({
                   color: theme.color.label,
                 }}
               >
-                {eventsReady ? eventsLabel(eventsCount) : '…'}
+                {!eventsReady
+                  ? '…'
+                  : selectedMaterial
+                    ? materialEventsLabel(eventsCount, selectedMaterial)
+                    : eventsLabel(eventsCount)}
               </Text>
+              {/* Clearing the material shows every event again (web's ×). */}
+              {eventsReady && selectedMaterial ? (
+                <Pressable
+                  testID="where-events-clear-material"
+                  accessibilityLabel="Show all events"
+                  hitSlop={8}
+                  onPress={() => onSelectMaterial(null)}
+                  style={{ marginLeft: 8 }}
+                >
+                  <Text style={{ fontSize: 14, color: '#64748b' }}>✕</Text>
+                </Pressable>
+              ) : null}
             </View>
           </Pressable>,
         ]}
       </SnapCarousel>
+      {/* Web (Nov 18): events near them that take the picked material, one tap away. */}
+      {focus === 'points' &&
+      selectedMaterial &&
+      eventsReady &&
+      eventsCount > 0 &&
+      onShowMaterialEvents ? (
+        <Pressable
+          testID="where-material-events"
+          accessibilityRole="button"
+          onPress={onShowMaterialEvents}
+          style={{
+            alignSelf: 'flex-start',
+            marginLeft: PAD_LEFT,
+            marginTop: 8,
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            borderRadius: theme.radius.pill,
+            backgroundColor: '#FFE7C2',
+            borderWidth: 1,
+            borderColor: '#F5C77E',
+            shadowColor: '#000',
+            shadowOpacity: 0.12,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 3,
+          }}
+        >
+          <Text style={{ fontSize: 13, fontFamily: theme.font.semibold, color: '#5A3500' }}>
+            {materialEventsPill(eventsCount, selectedMaterial)}
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

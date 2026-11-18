@@ -2,6 +2,8 @@ import { findMatchingMaterial, isMaterialTypeMatch } from '@/core/materials';
 import {
   createDropoffHref,
   eventsLabel,
+  materialEventsLabel,
+  materialEventsPill,
   formatDistance,
   isCoveredPosition,
   nearEventsCount,
@@ -34,6 +36,13 @@ describe('where hrefs and filters', () => {
     expect(eventsLabel(0)).toBe('No events close to you');
     expect(eventsLabel(1)).toBe('1 event near you');
     expect(eventsLabel(3)).toBe('3 events near you');
+  });
+
+  it('names the picked material on the pill and the Events card', () => {
+    expect(materialEventsPill(4, 'Metal')).toBe('4 events nearby take metal →');
+    expect(materialEventsPill(1, 'Organics')).toBe('1 event nearby take organics →');
+    expect(materialEventsLabel(4, 'Metal')).toBe('4 nearby take metal');
+    expect(materialEventsLabel(0, 'Metal')).toBe('None nearby take metal');
   });
 
   it('counts only events within 15 miles once it knows where they are', () => {

@@ -527,6 +527,10 @@ export function WhereScreen({
             onToggleFilter={() => setFilterOpen((open) => !open)}
             hasActiveFilters={platform !== 'all' || Boolean(orgFilter)}
             eventsCount={eventCount}
+            onShowMaterialEvents={() => {
+              setFocus('events');
+              pick(null);
+            }}
             eventsReady={!placesQuery.isPending}
           />
         </View>

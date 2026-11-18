@@ -4,6 +4,8 @@ export {
   createDropoffHref,
   directionsUrl,
   eventsLabel,
+  materialEventsLabel,
+  materialEventsPill,
   filterPlaces,
   formatDistance,
   formatDistanceKm,

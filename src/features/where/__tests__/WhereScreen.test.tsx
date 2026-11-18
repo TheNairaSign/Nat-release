@@ -195,6 +195,26 @@ describe('WhereScreen', () => {
     await waitFor(() => {
       expect(screen.getByTestId('where-chip-Food')).toBeTruthy();
     });
+    // A material is picked, so the Events card names it, and Points offers the events.
+    await waitFor(() => {
+      expect(screen.getByText('2 nearby take food')).toBeTruthy();
+    });
+    expect(screen.getByText('2 events nearby take food →')).toBeTruthy();
+  });
+
+  it('opens Events from the "events nearby take" pill, and clears the material', async () => {
+    await renderWithProviders(<WhereScreen type="Food" />, {
+      ports: { http: httpForWhere(), location: locationPort },
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('where-material-events')).toBeTruthy();
+    });
+    await fireEvent.press(screen.getByTestId('where-material-events'));
+    // On Events the pill goes; the card's count keeps the material, with a way out.
+    await waitFor(() => {
+      expect(screen.queryByTestId('where-material-events')).toBeNull();
+    });
+    await fireEvent.press(screen.getByTestId('where-events-clear-material'));
     await waitFor(() => {
       expect(screen.getByText('2 events near you')).toBeTruthy();
     });
