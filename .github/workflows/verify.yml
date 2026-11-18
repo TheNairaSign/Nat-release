@@ -19,9 +19,9 @@ jobs:
       EXPO_PUBLIC_APP_VARIANT: development
     steps:
       - uses: actions/checkout@v4
+      # pnpm version comes from package.json "packageManager"; pinning it here too
+      # makes pnpm/action-setup abort with "Multiple versions of pnpm specified".
       - uses: pnpm/action-setup@v4
-        with:
-          version: 11
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
