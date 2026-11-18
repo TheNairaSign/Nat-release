@@ -1,9 +1,12 @@
 import type { ReactNode } from 'react';
 import Mapbox from '@rnmapbox/maps';
-import { useEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import type { MarkerSpec } from '@/core/where';
 import { getEnv } from '@/shared/config/env';
+
+import { PinArtwork } from './PinArtwork';
 
 /** Room around each marker for its glow and badge; see the MarkerView note. */
 const MARKER_BLEED = 24;
@@ -20,7 +23,37 @@ export type MapMarker = {
   lat: number;
   lng: number;
   selected: boolean;
+  /** With `pinLayer`: the name of the pin picture this marker uses. */
+  icon?: string;
 };
+
+/** A map style expression (zoom-driven icon size). */
+type StyleExpression = readonly unknown[];
+
+/**
+ * Pins drawn by the map itself: each distinct pin is a picture (a symbol image) and a
+ * native layer places them, so they stay glued to the map while it pans and zooms.
+ * Without it, markers are views laid over the map, which trail behind on a phone.
+ */
+export type PinLayer = {
+  /** Every distinct pin picture in use, drawn at its largest size. */
+  images: { name: string; spec: MarkerSpec }[];
+  /** Scale of a pin picture by zoom, for unselected and the open pin. */
+  iconSize: StyleExpression;
+  selectedIconSize: StyleExpression;
+  /** Below this zoom an unselected pin is a small dot. */
+  dotMaxZoom: number;
+};
+
+/** One pin picture. Redrawn once a remote URS icon has loaded into it. */
+const PinImage = memo(function PinImage({ name, spec }: { name: string; spec: MarkerSpec }) {
+  const ref = useRef<{ refresh: () => void } | null>(null);
+  return (
+    <Mapbox.Image name={name} ref={ref}>
+      <PinArtwork spec={spec} onGlyphLoad={() => ref.current?.refresh()} />
+    </Mapbox.Image>
+  );
+});
 
 export function WhereMap({
   center,
@@ -33,6 +66,7 @@ export function WhereMap({
   frame,
   onZoomChange,
   flyTo,
+  pinLayer,
 }: {
   center: { latitude: number; longitude: number };
   zoom: number;
@@ -59,6 +93,8 @@ export function WhereMap({
    * controlled camera with unchanged props would stay where they left it.
    */
   flyTo?: { key: number; latitude: number; longitude: number; zoom: number } | null;
+  /** Draw pins natively (see PinLayer); `children` is then unused. */
+  pinLayer?: PinLayer | null;
 }) {
   const cameraRef = useRef<Mapbox.Camera>(null);
 
@@ -102,6 +138,19 @@ export function WhereMap({
     [frameKey],
   );
 
+  const pinShape = useMemo(
+    () => ({
+      type: 'FeatureCollection' as const,
+      features: markers.map((marker) => ({
+        type: 'Feature' as const,
+        id: marker.id,
+        properties: { id: marker.id, icon: marker.icon ?? '', sel: marker.selected },
+        geometry: { type: 'Point' as const, coordinates: [marker.lng, marker.lat] },
+      })),
+    }),
+    [markers],
+  );
+
   return (
     <Mapbox.MapView
       testID="where-map"
@@ -137,7 +186,62 @@ export function WhereMap({
         />
       )}
       {showsUser ? <Mapbox.UserLocation visible animated /> : null}
-      {markers.map((marker) => (
+      {pinLayer ? (
+        <>
+          <Mapbox.Images>
+            {pinLayer.images.map((image) => (
+              <PinImage key={image.name} name={image.name} spec={image.spec} />
+            ))}
+          </Mapbox.Images>
+          <Mapbox.ShapeSource
+            id="where-pins"
+            shape={pinShape}
+            // A finger is bigger than a dot: taps land within 44pt of a pin.
+            hitbox={{ width: 44, height: 44 }}
+            onPress={(event) => {
+              // The open pin is drawn on top, so it wins a tap on overlapping pins.
+              const hit =
+                event.features.find((f) => f.properties?.sel) ?? event.features[0];
+              const id = hit?.properties?.id;
+              if (typeof id === 'string') onMarkerPress(id);
+            }}
+          >
+            <Mapbox.CircleLayer
+              id="where-pin-dots"
+              maxZoomLevel={pinLayer.dotMaxZoom}
+              filter={['!', ['get', 'sel']]}
+              style={{
+                circleRadius: 5,
+                circleColor: '#1F5D20',
+                circleStrokeWidth: 1,
+                circleStrokeColor: '#ffffff',
+              }}
+            />
+            <Mapbox.SymbolLayer
+              id="where-pins-layer"
+              minZoomLevel={pinLayer.dotMaxZoom}
+              filter={['!', ['get', 'sel']]}
+              style={{
+                iconImage: ['get', 'icon'],
+                iconSize: pinLayer.iconSize as any,
+                iconAllowOverlap: true,
+                iconIgnorePlacement: true,
+              }}
+            />
+            <Mapbox.SymbolLayer
+              id="where-pin-open"
+              filter={['get', 'sel']}
+              style={{
+                iconImage: ['get', 'icon'],
+                iconSize: pinLayer.selectedIconSize as any,
+                iconAllowOverlap: true,
+                iconIgnorePlacement: true,
+              }}
+            />
+          </Mapbox.ShapeSource>
+        </>
+      ) : null}
+      {pinLayer ? null : markers.map((marker) => (
         // MarkerView, not PointAnnotation: on Android PointAnnotation
         // rasterises its children into a bitmap, which drops the drop-shadow,
         // squares off `borderRadius` (circles became boxes) and mangles the

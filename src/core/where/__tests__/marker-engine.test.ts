@@ -151,14 +151,30 @@ describe('resolveMarker', () => {
 });
 
 describe('markerSpecForPlace', () => {
-  it('renders a campaign as a calendar with its material as the badge', () => {
+  it('renders an event as the orange event pin, rainbow when open, grey when ended', () => {
     const spec = markerSpecForPlace(
       { kind: 'campaign', materials: ['plastic'], phase: 'live' },
       { size: 45 },
     );
-    expect(spec.shape).toBe('calendar');
-    expect(spec.glyph).toBe('CalendarDays');
-    expect(spec.secondary?.glyph).toBe('BottleWater');
+    expect(spec.event).toBe('default');
+    expect(spec.shape).toBe('circle');
+    expect(spec.color.bg).toBe('#FF9656');
+    expect(spec.width).toBe(41);
+    expect(spec.secondary).toBeNull();
+
+    const open = markerSpecForPlace(
+      { kind: 'campaign', materials: ['plastic'], phase: 'live' },
+      { size: 56, isHighlighted: true },
+    );
+    expect(open.event).toBe('selected');
+    expect(open.width).toBe(52);
+
+    const ended = markerSpecForPlace(
+      { kind: 'campaign', materials: [], phase: 'ended' },
+      { size: 56, isHighlighted: true },
+    );
+    expect(ended.event).toBe('default');
+    expect(ended.opacity).toBeLessThan(1);
   });
 
   it('defaults regular places to P1 and simple places to P5A', () => {

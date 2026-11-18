@@ -255,6 +255,12 @@ const UPCOMING_EVENT_COLOR: MarkerColor = {
   ring: '#E8C040',
   glowRgb: '245,215,77',
 };
+/** Bamidele's event pin orange (#FF9656). */
+const EVENT_PIN_COLOR: MarkerColor = {
+  bg: '#FF9656',
+  ring: '#FFC9A6',
+  glowRgb: '255,150,86',
+};
 const ENDED_EVENT_COLOR: MarkerColor = {
   bg: '#9ca3af',
   ring: '#d1d5db',
@@ -322,6 +328,11 @@ export type MarkerSpec = {
   height: number;
   opacity: number;
   showRing: boolean;
+  /**
+   * Events use Bamidele's pin (Flow 3, "HOME – 53"): an orange circle with a crate of
+   * vegetables, and a larger rainbow one for the event that's open. Null for places.
+   */
+  event?: 'default' | 'selected' | null;
   /** Secondary material shown as a small badge, bottom-right. */
   secondary: {
     glyph: GlyphName;
@@ -478,14 +489,25 @@ export function markerSpecForPlace(
   const [primary, secondary] = place.materials;
 
   if (place.kind === 'campaign') {
-    return resolveMarker({
-      platformClass: 'campaign',
-      materialType: 'campaign',
-      secondaryMaterialType: place.materials.find(Boolean),
-      markerVariant: place.phase ?? 'live',
-      size: options.size,
-      isHighlighted: options.isHighlighted,
-    });
+    // Bamidele's event pin: 41 on the design's 45 grid, 52 when open (on 56). An ended
+    // event keeps the shape, greyed and faded, and is never shown as the open one.
+    const ended = place.phase === 'ended';
+    const selected = Boolean(options.isHighlighted) && !ended;
+    const body = Math.round(options.size * (selected ? 52 / 56 : 41 / 45));
+    return {
+      shape: 'circle',
+      color: ended ? ENDED_EVENT_COLOR : EVENT_PIN_COLOR,
+      glyph: 'CalendarDays',
+      iconUrl: null,
+      glyphColor: WHITE,
+      glyphSize: Math.round(body * 0.52),
+      width: body,
+      height: body,
+      opacity: ended ? 0.55 : 1,
+      showRing: false,
+      event: selected ? 'selected' : 'default',
+      secondary: null,
+    };
   }
 
   const fallbackClass = place.kind === 'simple' ? 'P5A' : 'P1';

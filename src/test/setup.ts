@@ -52,6 +52,32 @@ jest.mock('@rnmapbox/maps', () => {
       UserLocation: () => null,
       MarkerView: ({ children }: { children: React.ReactNode }) =>
         React.createElement(View, null, children),
+      // Native pins: the layers draw nothing here; the source renders one tappable
+      // stand-in per pin so tests can find and press them as before.
+      Images: ({ children }: { children: React.ReactNode }) =>
+        React.createElement(View, { testID: 'where-pin-images' }, children),
+      Image: () => null,
+      CircleLayer: () => null,
+      SymbolLayer: () => null,
+      ShapeSource: ({
+        shape,
+        onPress,
+      }: {
+        shape: { features: { properties: { id: string; icon: string } }[] };
+        onPress?: (e: { features: unknown[] }) => void;
+      }) =>
+        React.createElement(
+          View,
+          null,
+          shape.features.map((feature) =>
+            React.createElement(Pressable, {
+              key: feature.properties.id,
+              testID: `where-place-${feature.properties.id}`,
+              accessibilityLabel: feature.properties.icon,
+              onPress: () => onPress?.({ features: [feature] }),
+            }),
+          ),
+        ),
       PointAnnotation: ({
         id,
         onSelected,

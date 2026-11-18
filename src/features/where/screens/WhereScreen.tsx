@@ -16,6 +16,9 @@ import {
   nearEventsCount,
   nearEventsFrame,
   markerSpecForPlace,
+  pinIconSizeExpression,
+  pinImageKey,
+  pinMaxSize,
   pickPlaceById,
   recordMaterialType,
   searchMaterialTypes,
@@ -58,8 +61,17 @@ import { WhereMap } from '@/shared/ui/maps/WhereMap';
 
 export type WhereSignInIntent = 'record' | 'reminder';
 
-/** Phone pins are this share of web's size (45pt at street zoom becomes ~36pt). */
-const PIN_SCALE = 0.8;
+/**
+ * Phone pins are this share of web's size: 1.2 makes 45pt at street zoom 54pt, half as
+ * big again as the 0.8 they were (Nov 16 meeting: pins about 50% bigger).
+ */
+const PIN_SCALE = 1.2;
+
+/**
+ * Pins drawn by the map itself, so they don't trail it as you pan (Nov 16 meeting). The
+ * web build of this screen has no native map layers and keeps the view markers.
+ */
+const NATIVE_PINS = Platform.OS !== 'web';
 
 export function WhereScreen({
   guest = false,
@@ -401,6 +413,33 @@ export function WhereScreen({
     }
   }
 
+  // Each pin's look, drawn once per distinct look at its largest size; the map scales it.
+  const pinLayerData = useMemo(() => {
+    const images = new Map<string, ReturnType<typeof markerSpecForPlace>>();
+    const markers = pins.flatMap((pin) => {
+      const place = placeById.get(pin.placeId);
+      if (!place) return [];
+      const isSelected =
+        selected?.id === pin.placeId && (pickedBranch ?? null) === pin.branchIndex;
+      const spec = markerSpecForPlace(
+        { ...place, isActive: !pin.inactive },
+        { size: pinMaxSize(isSelected, PIN_SCALE), isHighlighted: isSelected },
+      );
+      const icon = pinImageKey(spec);
+      images.set(icon, spec);
+      return [{ id: pin.key, lat: pin.lat, lng: pin.lng, selected: isSelected, icon }];
+    });
+    return {
+      markers,
+      layer: {
+        images: [...images].map(([name, spec]) => ({ name, spec })),
+        iconSize: pinIconSizeExpression(false, PIN_SCALE),
+        selectedIconSize: pinIconSizeExpression(true, PIN_SCALE),
+        dotMaxZoom: DOT_MARKER_MAX_ZOOM,
+      },
+    };
+  }, [pins, placeById, selected?.id, pickedBranch]);
+
   return (
     <ChromeScreen bleed>
       <View style={{ flex: 1, backgroundColor: theme.color.mapCanvas }}>
@@ -411,14 +450,8 @@ export function WhereScreen({
           flyTo={flyTo}
           onZoomChange={(z) => setLiveZoom((prev) => (Math.abs(prev - z) >= 0.1 ? z : prev))}
           showsUser={hasGps}
-          markers={pins.map((pin) => ({
-            id: pin.key,
-            lat: pin.lat,
-            lng: pin.lng,
-            selected:
-              selected?.id === pin.placeId &&
-              (pickedBranch ?? null) === pin.branchIndex,
-          }))}
+          markers={pinLayerData.markers}
+          pinLayer={NATIVE_PINS ? pinLayerData.layer : null}
           onMarkerPress={(key) => {
             const pin = pinByKey.get(key);
             const place = pin ? placeById.get(pin.placeId) : undefined;

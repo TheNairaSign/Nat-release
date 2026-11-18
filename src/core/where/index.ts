@@ -57,3 +57,4 @@ export {
   resolveMaterialVisual,
   type MaterialVisual,
 } from './material-visuals';
+export { pinIconSizeExpression, pinImageKey, pinMaxSize } from './pin-layer';

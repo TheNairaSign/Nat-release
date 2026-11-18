@@ -2,6 +2,7 @@ import { Image, View } from 'react-native';
 
 import { markerRadius, type MarkerSpec } from '@/core/where';
 import { MaterialGlyph } from '@/shared/ui/icons/materialGlyphRegistry';
+import { PinArtwork } from '@/shared/ui/maps/PinArtwork';
 
 /**
  * Renders one map marker from a `MarkerSpec` (see core/where/marker-engine).
@@ -31,6 +32,8 @@ export function markerShadow(
 }
 
 export function MapMarkerPin({ spec }: { spec: MarkerSpec }) {
+  // Events have their own pin (Bamidele's design), drawn the same way as on the map layer.
+  if (spec.event) return <PinArtwork spec={spec} />;
   const { color, shape, width, height, opacity, showRing, secondary } = spec;
   const radius = markerRadius(shape, width, height);
 
