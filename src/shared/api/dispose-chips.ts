@@ -1,5 +1,6 @@
 import {
   mergeWhereMaterialChips,
+  registerMaterialAliases,
   type MaterialChipInput,
 } from '@/core/materials';
 import { registerMaterialVisuals } from '@/core/where';
@@ -68,6 +69,13 @@ export async function fetchDisposeChips(http: HttpClient): Promise<string[]> {
   if (thingsMatch.status === 'fulfilled' && thingsMatch.value.status < 300) {
     tm = asChipInputs(unwrapList(thingsMatch.value.body));
   }
+
+  // Old names ("electronics") resolve to today's chip (E-waste), as web does.
+  registerMaterialAliases(
+    primary.filter(
+      (item): item is Exclude<MaterialChipInput, string> => typeof item === 'object',
+    ) as { category?: string; description?: string; aliases?: unknown }[],
+  );
 
   // The rich rows carry URS's icon and colour per material; Where's markers use them,
   // as web does (registerMaterialVisuals in WhereMapbox fetchMaterialCategories).

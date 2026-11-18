@@ -16,6 +16,41 @@ export function normalizeRaw(value: string): string {
     .replace(/\s+/g, ' ');
 }
 
+/**
+ * Web materialMatch.ts (Nov 18): a URS material's other names (display name, aliases such
+ * as "electronics" for e-waste) → its category. Places and events keep the name a
+ * material had when tagged, so after a rename they only match through this. Names, never
+ * families: battery is not e-waste. Filled when the chips load (registerMaterialAliases).
+ */
+const otherNameToCategory = new Map<string, string>();
+
+export function registerMaterialAliases(
+  entries: { category?: string | null; description?: string | null; aliases?: unknown }[],
+): void {
+  for (const entry of entries) {
+    const category = normalizeRaw(entry?.category ?? '');
+    if (!category || category === 'all') continue;
+    const others = [entry.description, ...(Array.isArray(entry.aliases) ? entry.aliases : [])];
+    for (const other of others) {
+      const name = normalizeRaw(String(other ?? ''));
+      if (!name || name === category || name === 'all') continue;
+      // Another material's own category always wins over an alias.
+      if (!otherNameToCategory.has(name)) otherNameToCategory.set(name, category);
+    }
+  }
+}
+
+/** Forget registered aliases (tests). */
+export function clearMaterialAliases(): void {
+  otherNameToCategory.clear();
+}
+
+/** The category a name stands for: itself, unless it's another name of a material. */
+export function materialNameKey(value: string): string {
+  const name = normalizeRaw(value);
+  return otherNameToCategory.get(name) ?? name;
+}
+
 export function toCanonicalMaterialId(
   raw: string | null | undefined,
 ): string | null {
@@ -27,7 +62,13 @@ export function toCanonicalMaterialId(
 
 export function aliasesForCanonicalId(canonicalId: string): string[] {
   const id = toCanonicalMaterialId(canonicalId);
-  return id ? [id] : [];
+  if (!id) return [];
+  const key = materialNameKey(id);
+  const names = new Set([id, key]);
+  for (const [other, category] of otherNameToCategory) {
+    if (category === key) names.add(other);
+  }
+  return [...names];
 }
 
 export function expandMaterialTerms(materialType: string): string[] {
@@ -44,7 +85,7 @@ export function fieldMatchesMaterial(
   if (!leftNorm || !rightNorm || leftNorm === 'all' || rightNorm === 'all') {
     return false;
   }
-  return leftNorm === rightNorm;
+  return leftNorm === rightNorm || materialNameKey(leftNorm) === materialNameKey(rightNorm);
 }
 
 function pushRaw(target: string[], value: unknown) {
@@ -170,6 +211,11 @@ export function resolveMaterialToCatalogOption(
   if (!needle) return null;
   for (const option of catalog) {
     if (normalizeRaw(option) === normalizeRaw(needle)) return option;
+  }
+  // An old or other name of a material ("electronics" → the E-waste chip).
+  const key = materialNameKey(needle);
+  for (const option of catalog) {
+    if (materialNameKey(option) === key) return option;
   }
   return null;
 }
