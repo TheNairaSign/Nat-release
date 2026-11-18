@@ -85,7 +85,7 @@ export function WasteAppsScreen({ guest = false }: { guest?: boolean }) {
       label: 'Thingsmatch',
       tile: <GradientFill angle={152} stops={SOFT_STOPS} />,
       icon: <SvgXml xml={THINGSMATCH_SVG} width={45.84} height={32.13} />,
-      onPress: () => void linking.openUrl('https://thingsmatch.app'),
+      onPress: () => void linking.openUrl('https://thingsmatch.com/app'),
     },
     {
       id: 'diva',
