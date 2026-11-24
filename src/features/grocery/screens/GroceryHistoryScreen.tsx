@@ -5,14 +5,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   buildDivertContext,
   buildDivertQuestion,
-  buildUseUpRequest,
   daysUntil,
   recycleHref,
   type GroceryItem,
   type GroceryItemStatus,
   type GroceryScan,
 } from '@/core/grocery';
-import { askDivaWith, openChatSection } from '@/features/ai';
+import { askDivaWith, openChatSection, RecipeCard } from '@/features/ai';
 import { useQuery, useQueryClient } from '@/shared/api';
 import { readHttpErrorMessage } from '@/shared/api/errors';
 import { usePorts } from '@/shared/hooks/use-ports';
@@ -27,8 +26,8 @@ import {
   updateItem,
   wasteStats,
 } from '../api/grocery-api';
-import { GroceryAppHeader, GroceryHeaderLink, GroceryNewScan } from '../ui/GroceryAppHeader';
-import { GroceryDivaBar } from '../ui/GroceryDivaBar';
+import { useGroceryRecipes } from '../api/use-grocery-recipes';
+import { GroceryAppHeader, GroceryNewScan } from '../ui/GroceryAppHeader';
 import {
   ExpiryDatePicker,
   ItemActionsSheet,
@@ -37,6 +36,8 @@ import {
   type SettleStatus,
 } from '../ui/GrocerySheets';
 import { HistoryItemRow } from '../ui/HistoryItemRow';
+import { LastThirtyDaysCard } from '../ui/LastThirtyDaysCard';
+import { MakeRecipeSheet, type SavedRecipe } from '../ui/MakeRecipeSheet';
 
 /** "Today", "Yesterday", or a plain date: how people refer to a past shop. */
 export function scanDate(iso: string, today = new Date()): string {
@@ -58,23 +59,26 @@ export function scanCount(scan: GroceryScan): string {
   return items === groups ? plural(items, 'item') : `${plural(items, 'item')} · ${plural(groups, 'group')}`;
 }
 
-/** The stats card's bar: 25 sticks, green for the share diverted, red for the rest. */
-const STICKS = 25;
-
 type Undo = { item: GroceryItem; status: GroceryItemStatus; count: number; split?: GroceryItem };
+type HistoryView = 'expiring' | 'history' | 'recipes';
 
 /**
  * The Grocery Manager's list (prototype Flow 3, "Current list"; web GroceryHistory.tsx):
  * the last 30 days' summary, "Make a recipe", then Expiring (everything still to use,
- * soonest first) or History (by shop). Swipe a card to settle it, with Undo; tap it for
- * the rest. The DiVA bar runs along the foot.
+ * soonest first), History (by shop) or Recipes (every recipe made). Swipe a card to
+ * settle it, with Undo; tap it for the rest. Recipes are a tab of their own and DiVA is
+ * a tap away elsewhere, so there's no DiVA bar here (web, Nov 18).
  */
 export function GroceryHistoryScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { http, navigation, location } = usePorts();
   const queryClient = useQueryClient();
-  const [view, setView] = useState<'expiring' | 'history'>('expiring');
+  const [view, setView] = useState<HistoryView>('expiring');
+  const { recipes, loading: recipesLoading, add: addRecipe } = useGroceryRecipes();
+  const [makingRecipe, setMakingRecipe] = useState(false);
+  /** The recipe just made here, lit up for a moment in Recipes. */
+  const [freshRecipeId, setFreshRecipeId] = useState<string | null>(null);
   const [acting, setActing] = useState<GroceryItem | null>(null);
   const [picking, setPicking] = useState<GroceryItem | null>(null);
   const [counting, setCounting] = useState<{ item: GroceryItem; status: SettleStatus } | null>(null);
@@ -238,18 +242,17 @@ export function GroceryHistoryScreen() {
     navigation.navigate('/ai');
   }
 
-  function makeRecipe() {
-    const request = buildUseUpRequest(expiring);
-    if (!request) return;
-    openChatSection('grocery');
-    askDivaWith(request.question, request.context);
-    navigation.navigate('/ai');
+  /** Made on this page: on top of Recipes, which opens to show it. */
+  function recipeMade(saved: SavedRecipe) {
+    addRecipe(saved);
+    setMakingRecipe(false);
+    setView('recipes');
+    setFreshRecipeId(saved.id);
+    setTimeout(() => setFreshRecipeId(null), 2500);
   }
 
   const newScan = () => navigation.replace('/ai/grocery');
   const hasStats = !!stats && (stats.used > 0 || stats.wasted > 0);
-  const diverted = stats?.savedShare ?? null;
-  const greenSticks = diverted === null ? 0 : Math.round(diverted * STICKS);
 
   const renderRow = (item: GroceryItem) => (
     <HistoryItemRow
@@ -269,15 +272,10 @@ export function GroceryHistoryScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
       <GroceryAppHeader
-        right={
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-            <GroceryHeaderLink label="Recipes" onPress={() => navigation.navigate('/grocery/recipes')} />
-            <GroceryNewScan onPress={newScan} />
-          </View>
-        }
+        right={<GroceryNewScan onPress={newScan} />}
       />
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140 + insets.bottom }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 + insets.bottom }}
       >
         {problem ? (
           <Pressable onPress={() => setProblem(null)} style={{ marginBottom: 8, borderRadius: 12, backgroundColor: '#FEE2E2', padding: 10 }}>
@@ -295,51 +293,15 @@ export function GroceryHistoryScreen() {
           </View>
         ) : null}
 
-        {!loading && hasStats && stats ? (
-          // web: 160pt card, 38pt corners, a hairline #707070 at 13%
-          <View
-            testID="grocery-stats"
-            style={{
-              marginHorizontal: -3,
-              marginTop: 6,
-              height: 160,
-              borderRadius: 38,
-              borderWidth: 1,
-              borderColor: 'rgba(112,112,112,0.13)',
-              backgroundColor: '#ffffff',
-            }}
-          >
-            <Text style={{ position: 'absolute', left: 29, top: 28, fontSize: 12, lineHeight: 12, letterSpacing: 0.96, color: '#1E0D2A' }}>
-              Last 30 days
-            </Text>
-            <Image
-              source={require('../../../../assets/images/grocery/groceryBagLine.png')}
-              style={{ position: 'absolute', left: 26, top: 46, width: 60, height: 36 }}
-            />
-            <View style={{ position: 'absolute', right: 31, top: 32 }}>
-              <Text style={{ fontSize: 34, lineHeight: 34, fontFamily: theme.font.bold, letterSpacing: -1.36, color: '#1E0D2A' }}>
-                {diverted === null ? '–' : Math.round(diverted * 100)}%
-              </Text>
-              <Text style={{ fontSize: 14, lineHeight: 14, letterSpacing: 1.12, color: '#1E0D2A' }}>Diverted</Text>
-            </View>
-            {/* The diverted share in green, the rest in red. */}
-            <View style={{ position: 'absolute', left: 29, right: 29, top: 92, flexDirection: 'row', justifyContent: 'space-between' }}>
-              {Array.from({ length: STICKS }, (_, i) => (
-                <View key={i} style={{ width: 8, height: 16, borderRadius: 13, backgroundColor: i < greenSticks ? '#0A5A14' : '#B72735' }} />
-              ))}
-            </View>
-            <Text style={{ position: 'absolute', left: 29, top: 127, fontSize: 13, lineHeight: 13, color: '#707070' }}>
-              {stats.used} diverted . {stats.wasted} landfilled
-            </Text>
-          </View>
-        ) : null}
+        {!loading && hasStats && stats ? <LastThirtyDaysCard share={stats.savedShare ?? 0} /> : null}
 
         {!loading && expiring.length > 0 ? (
-          // "Make a recipe →": a 132×36 lime pill hanging off the stats card's foot.
+          // "Make a recipe →": a 132×36 lime pill hanging off the stats card's foot. It opens
+          // the recipe sheet, not the chat.
           <View style={hasStats ? { zIndex: 10, marginTop: -17, paddingLeft: 177 } : { marginBottom: 16, alignItems: 'flex-end' }}>
             <Pressable
               testID="grocery-make-recipe"
-              onPress={makeRecipe}
+              onPress={() => setMakingRecipe(true)}
               style={{ height: 36, width: 132, borderRadius: 999, backgroundColor: '#D3FD5D', alignItems: 'center', justifyContent: 'center' }}
             >
               <Text style={{ fontSize: 14, color: '#010B02' }}>Make a recipe →</Text>
@@ -363,12 +325,13 @@ export function GroceryHistoryScreen() {
           </View>
         ) : (
           <>
-            {/* Two views of the same food: what's still to use, and every shop so far. */}
+            {/* Three views: what's still to use, every shop so far, and the recipes made. */}
             <View accessibilityRole="tablist" style={{ marginTop: 16, flexDirection: 'row', borderRadius: 999, backgroundColor: '#F1F3EF', padding: 4 }}>
               {(
                 [
                   ['expiring', 'Expiring', expiring.length],
                   ['history', 'History', null],
+                  ['recipes', 'Recipes', recipes.length],
                 ] as const
               ).map(([key, label, count]) => {
                 const on = view === key;
@@ -405,12 +368,40 @@ export function GroceryHistoryScreen() {
               })}
             </View>
 
-            <Text style={{ marginTop: 16, paddingHorizontal: 8, fontSize: 12, color: '#8A8F87' }}>
-              Tap a card for details
-            </Text>
+            {view !== 'recipes' ? (
+              <Text style={{ marginTop: 16, paddingHorizontal: 8, fontSize: 12, color: '#8A8F87' }}>
+                Tap a card for details
+              </Text>
+            ) : null}
 
             <View style={{ marginTop: 8, paddingHorizontal: 2 }}>
-              {view === 'expiring' ? (
+              {view === 'recipes' ? (
+                recipesLoading ? (
+                  <View testID="grocery-recipes-loading" style={{ gap: 12 }}>
+                    {[0, 1, 2].map((i) => (
+                      <View key={i} style={{ height: 92, borderRadius: 18, backgroundColor: '#F8FAFC' }} />
+                    ))}
+                  </View>
+                ) : recipes.length === 0 ? (
+                  <View style={{ paddingVertical: 48, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 15, fontFamily: theme.font.semibold, color: '#1A1A2E' }}>No recipes yet</Text>
+                    <Text style={{ marginTop: 4, maxWidth: 250, textAlign: 'center', fontSize: 13, color: '#64748B' }}>
+                      Tap Make a recipe and DiVA will make one from what&apos;s about to expire.
+                    </Text>
+                  </View>
+                ) : (
+                  <View>
+                    {recipes.map((saved) => (
+                      <RecipeCard
+                        key={saved.id}
+                        recipe={saved.recipe}
+                        feedbackRef={saved.id}
+                        highlight={saved.id === freshRecipeId}
+                      />
+                    ))}
+                  </View>
+                )
+              ) : view === 'expiring' ? (
                 expiring.length > 0 ? (
                   <View style={{ gap: 12 }}>{expiring.map(renderRow)}</View>
                 ) : (
@@ -446,18 +437,10 @@ export function GroceryHistoryScreen() {
         )}
       </ScrollView>
 
-      <GroceryDivaBar
-        items={expiring}
-        onAsk={(question) => {
-          openChatSection('grocery');
-          askDivaWith(question);
-          navigation.navigate('/ai');
-        }}
-      />
-
       {undo ? (
         <UndoBar
-          bottom={31 + 68 + 12 + insets.bottom}
+          // No DiVA bar under it any more: web's "no nav at all" 1rem.
+          bottom={16 + insets.bottom}
           message={`${undo.count > 1 ? `${undo.count} × ` : ''}${undo.item.name} marked ${
             undo.status === 'consumed' ? 'used' : 'thrown away'
           }`}
@@ -511,6 +494,10 @@ export function GroceryHistoryScreen() {
             void settle(item, status, count);
           }}
         />
+      ) : null}
+
+      {makingRecipe ? (
+        <MakeRecipeSheet items={expiring} onClose={() => setMakingRecipe(false)} onMade={recipeMade} />
       ) : null}
 
       {picking ? (

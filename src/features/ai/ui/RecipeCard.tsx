@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
-import type { UseUpRecipe } from '@/core/ai';
+import { recipeShareText, type UseUpRecipe } from '@/core/ai';
 import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
 import { Text } from '@/shared/ui';
-import { ClockGlyph, FeatherStarGlyph } from '@/shared/ui/icons/featherGlyphs';
+import { ClockGlyph, FeatherStarGlyph, ShareGlyph } from '@/shared/ui/icons/featherGlyphs';
 
 import { rateRecipe } from '../api/recipe-feedback-api';
 
@@ -140,16 +140,45 @@ function RecipeRating({
   );
 }
 
+/** Share: the phone's share sheet (social apps, messages), as web's navigator.share. */
+function ShareButton({ recipe }: { recipe: UseUpRecipe }) {
+  const { share } = usePorts();
+  return (
+    <Pressable
+      testID="recipe-share"
+      accessibilityRole="button"
+      accessibilityLabel="Share this recipe"
+      // Closing the share sheet isn't a failure, so nothing is said either way.
+      onPress={() => void share.share(recipeShareText(recipe)).catch(() => {})}
+      style={{
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#ffffff',
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.06)',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <ShareGlyph color="#1F5D20" size={14} />
+    </Pressable>
+  );
+}
+
 /**
- * A recipe from DiVA's "use it up" flow, laid out to cook from, with a rating under it.
- * Web: components/ai/RecipeCard.tsx.
+ * A recipe from DiVA's "use it up" flow, laid out to cook from, with share beside its
+ * title and a rating under it. Web: components/ai/RecipeCard.tsx.
  */
 export function RecipeCard({
   recipe,
   feedbackRef,
+  highlight = false,
 }: {
   recipe: UseUpRecipe;
   feedbackRef?: string;
+  /** Just made: a short lime ring so the eye finds it (web shadow 0 0 0 3px #DCFE77). */
+  highlight?: boolean;
 }) {
   const theme = useTheme();
   return (
@@ -163,30 +192,34 @@ export function RecipeCard({
         backgroundColor: '#F7F8F4',
         paddingHorizontal: 16,
         paddingVertical: 14,
+        ...(highlight ? { boxShadow: '0 0 0 3px #DCFE77' } : {}),
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <Text style={{ flex: 1, fontSize: 16, lineHeight: 21, fontFamily: theme.font.bold, color: '#1A1A2E' }}>
           {recipe.title}
         </Text>
-        {recipe.minutes ? (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 4,
-              borderRadius: 999,
-              backgroundColor: '#ffffff',
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-            }}
-          >
-            <ClockGlyph color="#1F5D20" size={14} />
-            <Text style={{ fontSize: 12, fontFamily: theme.font.semibold, color: '#1F5D20' }}>
-              {recipe.minutes} min
-            </Text>
-          </View>
-        ) : null}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {recipe.minutes ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                borderRadius: 999,
+                backgroundColor: '#ffffff',
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+              }}
+            >
+              <ClockGlyph color="#1F5D20" size={14} />
+              <Text style={{ fontSize: 12, fontFamily: theme.font.semibold, color: '#1F5D20' }}>
+                {recipe.minutes} min
+              </Text>
+            </View>
+          ) : null}
+          <ShareButton recipe={recipe} />
+        </View>
       </View>
 
       {recipe.uses.length > 0 ? (

@@ -1,4 +1,4 @@
-import { parseAiResponse } from '@/core/ai';
+import { parseAiResponse, readUseUpIdeas, recipeShareText } from '@/core/ai';
 
 describe('DiVA reply extras', () => {
   it('keeps the advice card, the recipe, images and the token cost', () => {
@@ -38,5 +38,40 @@ describe('DiVA reply extras', () => {
   it('adds nothing when the reply carries none of them', () => {
     const reply = parseAiResponse({ type: 'KNOWLEDGE', data: { answer: 'Hi' } });
     expect(reply).toEqual({ text: 'Hi', tools: [], options: [] });
+  });
+});
+
+describe('recipeShareText', () => {
+  it('reads like a recipe sent to a friend, with where it came from', () => {
+    const text = recipeShareText({
+      title: 'Kiwi smoothie',
+      uses: ['kiwi', 'milk'],
+      minutes: 5,
+      steps: ['Peel the kiwi', 'Blend with milk'],
+      tip: null,
+    });
+    expect(text).toBe(
+      [
+        'Kiwi smoothie (about 5 min)',
+        'Uses: kiwi, milk',
+        '',
+        '1. Peel the kiwi',
+        '2. Blend with milk',
+        '',
+        'A recipe I made with DiVA on NatCycle, from food that was about to go off.',
+        'https://natcycle.app',
+      ].join('\n'),
+    );
+  });
+});
+
+describe('readUseUpIdeas', () => {
+  it('keeps the ideas that have a title', () => {
+    expect(
+      readUseUpIdeas({
+        useUp: { ideas: [{ title: 'Soup', uses: ['leek'], why: 'Quick' }, { uses: [] }, null] },
+      }),
+    ).toEqual([{ title: 'Soup', uses: ['leek'], why: 'Quick' }]);
+    expect(readUseUpIdeas(undefined)).toEqual([]);
   });
 });

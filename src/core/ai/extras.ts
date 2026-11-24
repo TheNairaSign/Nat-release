@@ -100,3 +100,44 @@ export function parseTokenCost(envelope: unknown): number | undefined {
   const cost = tokens?.cost;
   return typeof cost === 'number' && cost > 0 ? cost : undefined;
 }
+
+/**
+ * The recipe as plain text, the way someone would paste it to a friend (web
+ * utils/recipeShare.ts recipeShareText): what the share button sends.
+ */
+export function recipeShareText(recipe: UseUpRecipe): string {
+  return [
+    `${recipe.title}${recipe.minutes ? ` (about ${recipe.minutes} min)` : ''}`,
+    recipe.uses.length > 0 ? `Uses: ${recipe.uses.join(', ')}` : '',
+    '',
+    ...recipe.steps.map((step, i) => `${i + 1}. ${step}`),
+    recipe.tip ? `\nTip: ${recipe.tip}` : '',
+    '',
+    'A recipe I made with DiVA on NatCycle, from food that was about to go off.',
+    'https://natcycle.app',
+  ]
+    .filter((line, i, all) => line !== '' || all[i - 1] !== '')
+    .join('\n')
+    .trim();
+}
+
+/**
+ * The ideas DiVA's "use it up" flow answers with first (CLARIFICATION context
+ * `useUp.ideas`), one of which is then asked for as a recipe. Web MakeRecipeSheet readIdeas.
+ */
+export type UseUpIdea = { title: string; uses: string[]; why: string };
+
+export function readUseUpIdeas(context: Record<string, unknown> | undefined): UseUpIdea[] {
+  const raw = (context?.useUp as { ideas?: unknown } | undefined)?.ideas;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (idea): idea is Record<string, unknown> =>
+        !!idea && typeof idea === 'object' && typeof (idea as { title?: unknown }).title === 'string',
+    )
+    .map((idea) => ({
+      title: String(idea.title),
+      uses: Array.isArray(idea.uses) ? idea.uses.map(String) : [],
+      why: typeof idea.why === 'string' ? idea.why : '',
+    }));
+}

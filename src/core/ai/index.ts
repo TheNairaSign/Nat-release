@@ -26,8 +26,11 @@ export {
   normalizeAiImages,
   parseGuidance,
   parseRecipe,
+  readUseUpIdeas,
+  recipeShareText,
   type AiImage,
   type DiversionGuidance,
+  type UseUpIdea,
   type UseUpRecipe,
 } from './extras';
 export {

@@ -31,6 +31,34 @@ function http() {
       request: async (call: Call) => {
         calls.push(call);
         if (call.path === '/grocery/scans') return { status: 200, body: { data: SCANS } };
+        if (call.path.endsWith('/ask')) {
+          const question = (call.body as { question?: string }).question;
+          // First the ideas for what's expiring, then the recipe for the one picked.
+          return question === 'Kiwi smoothie'
+            ? {
+                status: 200,
+                body: {
+                  type: 'KNOWLEDGE',
+                  data: {
+                    answer: 'Here you go.',
+                    recipe: { title: 'Kiwi smoothie', uses: ['kiwi', 'milk'], minutes: 5, steps: ['Blend'], tip: null },
+                  },
+                },
+              }
+            : {
+                status: 200,
+                body: {
+                  type: 'CLARIFICATION',
+                  data: {
+                    question: 'Which one?',
+                    context: { useUp: { ideas: [{ title: 'Kiwi smoothie', uses: ['kiwi'], why: 'Quick' }] } },
+                  },
+                },
+              };
+        }
+        if (call.path === '/chat' && call.method === 'POST') {
+          return { status: 200, body: { data: [{ _id: 'saved-recipe' }] } };
+        }
         if (call.path.startsWith('/grocery/stats')) {
           return { status: 200, body: { data: { used: 3, wasted: 1, savedShare: 0.75 } } };
         }
@@ -51,7 +79,8 @@ describe('GroceryHistoryScreen', () => {
     await renderWithProviders(<GroceryHistoryScreen />, { ports: { http: port } });
     await waitFor(() => expect(screen.getByTestId('grocery-stats')).toBeTruthy());
     expect(screen.getByText('75%')).toBeTruthy();
-    expect(screen.getByText('3 diverted . 1 landfilled')).toBeTruthy();
+    expect(screen.getByText('Diverted')).toBeTruthy();
+    expect(screen.getByText('25%\nlandfilled')).toBeTruthy();
     expect(screen.getByText('kiwi')).toBeTruthy();
     expect(screen.getByText('milk')).toBeTruthy();
     expect(screen.queryByText('bread')).toBeNull(); // used: not in Expiring
@@ -79,14 +108,21 @@ describe('GroceryHistoryScreen', () => {
     expect(calls.some((c) => c.method === 'PATCH' && (c.body as { status?: string }).status === 'consumed')).toBe(true);
   });
 
-  it('opens DiVA with a recipe request for the food still to use', async () => {
+  it('makes a recipe in a sheet, without the chat, and shows it in Recipes', async () => {
     const navigate = jest.fn();
-    const { port } = http();
+    const { port, calls } = http();
     await renderWithProviders(<GroceryHistoryScreen />, {
       ports: { http: port, navigation: { navigate, replace() {}, back() {} } },
     });
     await waitFor(() => expect(screen.getByTestId('grocery-make-recipe')).toBeTruthy());
     await fireEvent.press(screen.getByTestId('grocery-make-recipe'));
-    expect(navigate).toHaveBeenCalledWith('/ai');
+    await waitFor(() => expect(screen.getByTestId('make-recipe-idea-Kiwi smoothie')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('make-recipe-idea-Kiwi smoothie'));
+    await waitFor(() => expect(screen.getByTestId('ai-recipe')).toBeTruthy());
+    expect(screen.getByText('Kiwi smoothie')).toBeTruthy();
+    expect(screen.getByTestId('grocery-tab-recipes').props.accessibilityState).toEqual({ selected: true });
+    expect(navigate).not.toHaveBeenCalledWith('/ai');
+    // Kept in DiVA's grocery chat, so it's there next time (and in DiVA).
+    expect(calls.some((c) => c.path === '/chat' && c.method === 'POST')).toBe(true);
   });
 });

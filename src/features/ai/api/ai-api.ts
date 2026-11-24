@@ -194,13 +194,16 @@ export async function askAi(
  * only web-created history existed.
  *
  * `sender` is the backend's enum ('user' | 'ai'), not our internal role name.
+ *
+ * Resolves to the saved message's id: the server answers with the whole history, this
+ * message last (web MakeRecipeSheet reads it the same way). Undefined if it can't tell.
  */
 export async function persistChatMessage(
   http: HttpClient,
   message: AiMessage,
   section: ChatSection,
-): Promise<void> {
-  await http.request({
+): Promise<string | undefined> {
+  const response = await http.request({
     path: '/chat',
     method: 'POST',
     body: {
@@ -225,6 +228,10 @@ export async function persistChatMessage(
       },
     },
   });
+  if (response.status >= 300) return undefined;
+  const saved = unwrapList(response.body);
+  const last = saved[saved.length - 1] as { _id?: unknown } | undefined;
+  return typeof last?._id === 'string' ? last._id : undefined;
 }
 
 export async function clearChatHistory(
