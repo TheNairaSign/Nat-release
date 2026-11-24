@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path, Text as SvgText } from 'react-native-svg';
 
 import { usePorts } from '@/shared/hooks/use-ports';
 import { useTheme } from '@/shared/theme';
@@ -10,37 +9,27 @@ import { CameraGlyph } from '@/shared/ui/icons/featherGlyphs';
 import { ChevronGlyph } from '@/shared/ui/icons/glyphs';
 
 /**
- * "beta" on a small hand-drawn leaf, as a superscript beside the app's name: a quiet flag
- * that it's new and still growing (web components/grocery/BetaLeaf).
+ * A plain "BETA" as a superscript beside the app's name: both mini apps are new and still
+ * growing (web GroceryAppHeader, Nov 18: `ml-1.5 align-super text-[10px] font-bold
+ * tracking-[0.08em] text-[#1F5D20]/70`; it replaced the leaf badge).
  */
-export function BetaLeaf() {
+export function BetaMark() {
+  const theme = useTheme();
   return (
-    <View
-      accessibilityLabel="Beta"
-      style={{ marginLeft: 4, marginTop: -8, transform: [{ rotate: '-9deg' }] }}
+    <Text
+      accessibilityLabel="Beta: new, and still growing"
+      style={{
+        marginLeft: 6,
+        marginTop: -2,
+        fontSize: 10,
+        lineHeight: 12,
+        fontFamily: theme.font.bold,
+        letterSpacing: 0.8,
+        color: 'rgba(31,93,32,0.7)',
+      }}
     >
-      <Svg width={40} height={21} viewBox="0 0 44 23">
-        <Path d="M4.2 12.6c-1.3.4-2.4 1.5-3.1 3.2" stroke="#0A5A14" strokeWidth={1.3} strokeLinecap="round" fill="none" />
-        <Path
-          d="M4.1 12.5C7.6 5.9 16.4 1.8 27.3 2.6c6.2.5 10.8 3.2 14.4 6.9.4.4.4 1 0 1.4-4.1 4.7-10.6 9.4-19.8 9.7C13.4 20.9 7.6 17.6 4.1 12.5Z"
-          fill="#D3FD5D"
-          stroke="#0A5A14"
-          strokeWidth={1.25}
-          strokeLinejoin="round"
-        />
-        <Path
-          d="M5.6 12.4c9.4-1.6 21.5-2.4 35.2-1.9M15.3 11.3l-3-3.6M27.6 10.6l3.1 4.4"
-          stroke="#0A5A14"
-          strokeWidth={0.8}
-          strokeLinecap="round"
-          opacity={0.28}
-          fill="none"
-        />
-        <SvgText x={23.4} y={14.6} textAnchor="middle" fontSize={8.4} fontWeight="700" letterSpacing={0.3} fill="#0A5A14">
-          beta
-        </SvgText>
-      </Svg>
-    </View>
+      BETA
+    </Text>
   );
 }
 
@@ -145,7 +134,7 @@ export function GroceryAppHeader({
         <Text style={{ fontSize: 17, fontFamily: theme.font.semibold, color: '#1F5D20', letterSpacing: -0.2 }}>
           {title}
         </Text>
-        <BetaLeaf />
+        <BetaMark />
       </View>
       <View style={{ marginLeft: 'auto', marginRight: -8 }}>{right}</View>
     </View>

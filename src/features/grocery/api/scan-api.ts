@@ -129,6 +129,7 @@ export async function pollUntilSettled(
       throw new Error('This is taking longer than usual. Please try again in a minute.');
     }
     await wait(delayMs);
-    delayMs = Math.min(5000, Math.round(delayMs * 1.4));
+    // Never more than 2.5s between checks: a finished scan shows without waiting long (web).
+    delayMs = Math.min(2500, Math.round(delayMs * 1.4));
   }
 }

@@ -247,7 +247,9 @@ export function GroceryScannerScreen({ guest = false }: { guest?: boolean }) {
     // No camera (or not ready): a photo from the library instead, as web's file picker.
     const picked = await camera.pickImage();
     if (!picked) return;
-    const prepared = await preparePhoto(picked.uri);
+    // A gallery photo comes at full camera size (often 4000px, 5–12 MB): shrunk like a
+    // capture, or big carts were slow to upload and the largest failed (web shrinkPhoto).
+    const prepared = await preparePhoto(picked.uri, picked.width, picked.height);
     if (prepared) void runScan(prepared);
   }
 
@@ -545,7 +547,11 @@ export function GroceryScannerScreen({ guest = false }: { guest?: boolean }) {
         </Pressable>
       ) : null}
 
-      {/* The question lives in the bar, and becomes a text box when they'd rather type. */}
+      {/* The question lives in the bar, and becomes a text box when they'd rather type.
+          Once the scan is saved there's nothing left to answer: no bar, no mic (web). */}
+      {phase === 'done' ? (
+        <View style={{ height: 16 + insets.bottom }} />
+      ) : (
       <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 + insets.bottom }}>
         <View
           style={{
@@ -616,6 +622,7 @@ export function GroceryScannerScreen({ guest = false }: { guest?: boolean }) {
           </Pressable>
         </View>
       </View>
+      )}
 
       {removingTag !== null && cart ? (
         <BottomSheet open onClose={() => setRemovingTag(null)} testID="scanner-remove">

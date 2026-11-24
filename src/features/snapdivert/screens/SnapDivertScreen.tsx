@@ -289,7 +289,7 @@ export function SnapDivertScreen({ guest = false }: { guest?: boolean }) {
     // No camera: a photo from the library instead.
     const picked = await camera.pickImage();
     if (!picked) return;
-    const prepared = await preparePhoto(picked.uri);
+    const prepared = await preparePhoto(picked.uri, picked.width, picked.height);
     if (prepared) void identifyPhoto(prepared);
   }
 

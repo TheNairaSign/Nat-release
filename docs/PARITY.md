@@ -649,3 +649,26 @@ screens mobile already had) were brought to web `964a78a`:
 
 - **Web's unlinked `/my-grocery` page**: nothing links to it on web.
 - **Buying tokens or tiers:** in-app purchases (Apple / Google), not Stripe, if offered.
+
+## Nov 24 catch-up: web `main` @ `cd343da`
+
+The web fixes from the Nov 16 and Nov 18 meetings, brought across:
+
+- **Where:** every quick drop-off point loads (2000, not the nearest 50). With a material
+  picked, ended events no longer count toward "N events nearby take …". The event card
+  collapses to its name, when and buttons (chevron beside the ✕), its buttons stay pinned
+  under the scrolling details, and it never grows taller than the screen above the tab bar.
+- **Grocery Manager, history:** web's new Last 30 days card (diverted share left in green,
+  landfilled right in red, split bar). A third tab, **Recipes**, with a count: every recipe
+  DiVA made, as cards, newest first. "Make a recipe →" opens a sheet (DiVA's ideas, pick
+  one, the recipe is written and saved to the grocery chat) instead of going to DiVA; the
+  new card lights up in Recipes. Share on every recipe card (the phone's share sheet). The
+  DiVA bar, the bag illustration and the header's Recipes link are gone.
+- **Grocery Manager, scanner:** no question bar or mic once the scan is saved. Plain BETA
+  beside the name instead of the leaf. Results checked every 2.5 s at most.
+- **Big carts (mobile's own bug):** a photo picked from the gallery was never scaled down
+  (no size was passed to `preparePhoto`), so the full camera file went up. It's now scaled to
+  1600 px like a capture, at web's 0.85 JPEG quality. SnapDivert had the same bug; fixed too.
+
+Not ported, on purpose: web's sign-up change (Google/Apple above the form), because mobile
+has no social sign-in yet; and the admin-only tools (merge duplicates, bulk uploads).

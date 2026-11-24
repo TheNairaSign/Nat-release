@@ -13,6 +13,7 @@ function fromAsset(
     fileName,
     mimeType,
     base64: asset.base64 ?? undefined,
+    ...(asset.width && asset.height ? { width: asset.width, height: asset.height } : {}),
   };
 }
 

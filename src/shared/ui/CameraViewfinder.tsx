@@ -23,7 +23,7 @@ export async function preparePhoto(
       context.resize(width >= height ? { width: MAX_CAPTURE_PX } : { height: MAX_CAPTURE_PX });
     }
     const image = await context.renderAsync();
-    const saved = await image.saveAsync({ compress: 0.92, format: SaveFormat.JPEG, base64: true });
+    const saved = await image.saveAsync({ compress: 0.85, format: SaveFormat.JPEG, base64: true });
     return saved.base64 ? { base64: saved.base64, mimeType: 'image/jpeg', uri: saved.uri } : null;
   } catch {
     return null;
