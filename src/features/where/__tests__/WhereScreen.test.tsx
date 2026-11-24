@@ -322,6 +322,21 @@ describe('WhereScreen', () => {
     await waitFor(() => expect(screen.getByText('3 people going')).toBeTruthy());
   });
 
+  it('collapses an event card to its name, when and buttons, and opens it again', async () => {
+    await renderWithProviders(<WhereScreen type="Food" eventId="c1" />, {
+      ports: { http: httpForWhere(), location: locationPort },
+    });
+    await waitFor(() => expect(screen.getByTestId('where-attend')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('where-event-collapse'));
+    expect(screen.queryByTestId('where-attend')).toBeNull();
+    expect(screen.queryByText('+1 203 555 0100')).toBeNull();
+    expect(screen.getByText('Community drive')).toBeTruthy();
+    expect(screen.getByTestId('where-directions')).toBeTruthy();
+    expect(screen.getByTestId('where-sheet-close')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('where-event-title'));
+    expect(screen.getByTestId('where-attend')).toBeTruthy();
+  });
+
   it('tells someone outside the mapped states why the map looks empty', async () => {
     await renderWithProviders(<WhereScreen />, {
       ports: { http: httpForWhere(), location: locationPort },

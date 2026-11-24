@@ -255,9 +255,12 @@ export function WhereScreen({
       searchOpen ? searchMaterialTypes(chipsQuery.data ?? [], searchQuery) : [],
     [searchOpen, chipsQuery.data, searchQuery],
   );
-  // Counted within 15 miles of the person (web nearEventsCount).
+  // Counted within 15 miles of the person (web nearEventsCount). With a material picked,
+  // an ended event can't take it, so it isn't counted (web campaignTakesMaterial, Nov 18).
   const eventCount = nearEventsCount(
-    placesQuery.data ?? [],
+    selectedMaterial
+      ? (placesQuery.data ?? []).filter((p) => p.kind !== 'campaign' || p.phase !== 'ended')
+      : (placesQuery.data ?? []),
     hasGps ? origin : null,
   );
   // Any change of selected place clears the branch focus, so the camera never

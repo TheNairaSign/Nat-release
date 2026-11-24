@@ -1,5 +1,6 @@
 import { Image, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { useState, type ReactNode } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { WhereBranch, WherePlace } from '@/core/where';
 import { usePorts } from '@/shared/hooks/use-ports';
@@ -70,6 +71,16 @@ function websiteUrl(website: string): string {
 function telUrl(phone: string): string {
   return `tel:${phone.replace(/[^\d+]/g, '')}`;
 }
+
+/** Web's 32pt white/80 round header button (collapse, close) on the event card. */
+const ROUND_BUTTON = {
+  width: 32,
+  height: 32,
+  borderRadius: 16,
+  backgroundColor: 'rgba(255,255,255,0.8)',
+  alignItems: 'center',
+  justifyContent: 'center',
+} as const;
 
 function CloseButton({ onPress, color = SLATE_400 }: { onPress: () => void; color?: string }) {
   return (
@@ -886,6 +897,16 @@ function EventCard(props: CardProps) {
   const spot = initialBranchIndex === null ? null : place.extraLocations?.[initialBranchIndex];
   const address = spot?.address ?? place.address;
   const iconColor = ui.accent;
+  /** Collapsed: just the name, when and the buttons, so the map shows behind it (web). */
+  const [collapsed, setCollapsed] = useState(false);
+  // Never taller than the screen above the tab bar, so close and collapse stay in reach
+  // and the details scroll instead (web: max-h calc(100dvh - 7.5rem)).
+  const { height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const maxHeight = Math.min(
+    540,
+    screenHeight - insets.top - (theme.layout.tabBarReserve + insets.bottom - 24) - 16,
+  );
 
   return (
     <View
@@ -896,11 +917,11 @@ function EventCard(props: CardProps) {
         borderWidth: 1,
         borderColor: ui.cardBorder,
         overflow: 'hidden',
-        maxHeight: 540,
+        maxHeight,
         boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
       }}
     >
-      {cover ? (
+      {cover && !collapsed ? (
         <View style={{ height: 144, width: '100%', backgroundColor: '#F5E6CC', opacity: ended ? 0.8 : 1 }}>
           <Image source={{ uri: cover }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           <View
@@ -934,8 +955,13 @@ function EventCard(props: CardProps) {
       ) : null}
 
       <View style={{ paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', gap: 8 }}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          {!cover ? (
+        <Pressable
+          testID="where-event-title"
+          disabled={!collapsed}
+          onPress={() => setCollapsed(false)}
+          style={{ flex: 1, minWidth: 0 }}
+        >
+          {!cover || collapsed ? (
             <Text
               style={{
                 fontSize: 10,
@@ -964,11 +990,33 @@ function EventCard(props: CardProps) {
               {spot.name}
             </Text>
           ) : null}
+        </Pressable>
+        <View style={{ marginRight: -4, marginTop: -4, flexDirection: 'row', gap: 4 }}>
+          <Pressable
+            testID="where-event-collapse"
+            accessibilityRole="button"
+            accessibilityLabel={collapsed ? 'Show event details' : 'Collapse event details'}
+            accessibilityState={{ expanded: !collapsed }}
+            onPress={() => setCollapsed((v) => !v)}
+            hitSlop={4}
+            style={ROUND_BUTTON}
+          >
+            <ChevronGlyph color="#475569" size={16} direction={collapsed ? 'up' : 'down'} />
+          </Pressable>
+          <Pressable
+            testID="where-sheet-close"
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            onPress={onClose}
+            hitSlop={4}
+            style={ROUND_BUTTON}
+          >
+            <CloseGlyph color="#475569" size={16} />
+          </Pressable>
         </View>
-        <CloseButton onPress={onClose} color={SLATE_500} />
       </View>
 
-      <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16, gap: 12 }}>
+      <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 12 }}>
         {place.schedule ? (
           <IconLine icon={<ClockSolidGlyph color={iconColor} size={12} />}>
             <Text style={{ fontSize: 12, lineHeight: 18, color: SLATE_700 }}>
@@ -977,6 +1025,8 @@ function EventCard(props: CardProps) {
             </Text>
           </IconLine>
         ) : null}
+        {collapsed ? null : (
+          <>
         {place.whoCanAttend ? (
           <IconLine icon={<UsersGlyph color={iconColor} size={12} />}>
             <Text style={{ fontSize: 12, lineHeight: 18, color: SLATE_700 }}>{place.whoCanAttend}</Text>
@@ -1033,7 +1083,12 @@ function EventCard(props: CardProps) {
         {!ended ? (
           <AttendButton campaignId={place.id} guest={guest} onRequireSignIn={onRequireSignIn} />
         ) : null}
+          </>
+        )}
+      </ScrollView>
 
+      {/* The buttons stay put under the details, collapsed or not (web). */}
+      <View style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 12 }}>
         <View style={{ flexDirection: 'row', gap: 8, paddingTop: 4 }}>
           {!ended ? (
             <Pressable
@@ -1081,8 +1136,8 @@ function EventCard(props: CardProps) {
           </Pressable>
           <Heart {...props} />
         </View>
-        <Suggest {...props} />
-      </ScrollView>
+        {collapsed ? null : <Suggest {...props} />}
+      </View>
     </View>
   );
 }

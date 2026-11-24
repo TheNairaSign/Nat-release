@@ -159,6 +159,12 @@ function branchesOf(raw: unknown): WhereBranch[] {
   });
 }
 
+/**
+ * Quick drop-off points loaded at once (web WhereMapbox ALL_POINTS_LIMIT, Nov 18): every
+ * point, nearest first. Limiting to the nearest 50 made the map look like it stopped.
+ */
+const ALL_POINTS_LIMIT = 2000;
+
 export async function fetchWherePlaces(
   http: HttpClient,
   origin: { latitude: number; longitude: number },
@@ -174,7 +180,7 @@ export async function fetchWherePlaces(
       method: 'GET',
     }),
     http.request({
-      path: `/simple-dropoff-locations/nearby?latitude=${origin.latitude}&longitude=${origin.longitude}&radius=50000&limit=50&includeInactive=true${
+      path: `/simple-dropoff-locations/nearby?latitude=${origin.latitude}&longitude=${origin.longitude}&radius=50000&limit=${ALL_POINTS_LIMIT}&includeInactive=true${
         materialType ? `&materialType=${encodeURIComponent(materialType)}` : ''
       }`,
       method: 'GET',
