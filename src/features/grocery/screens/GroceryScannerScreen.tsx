@@ -489,7 +489,7 @@ export function GroceryScannerScreen({ guest = false }: { guest?: boolean }) {
               style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#E53935', borderWidth: 3, borderColor: 'rgba(229,57,53,0.25)' }}
             />
             <Text style={{ borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.75)', paddingHorizontal: 10, fontSize: 12.5, lineHeight: 15, color: '#1A1A2E', overflow: 'hidden' }}>
-              {cameraOff ? 'Tap the shutter to pick a photo' : 'Take a clean photo showing all your groceries'}
+              {cameraOff ? 'Tap the shutter to pick a photo' : 'Take a clean photo of your groceries or leftovers'}
             </Text>
           </View>
         ) : null}

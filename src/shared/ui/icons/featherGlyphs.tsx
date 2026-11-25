@@ -296,3 +296,12 @@ export function ShareGlyph({ color, size }: FeatherGlyphProps) {
     </Svg>
   );
 }
+
+/** FiChevronDown */
+export function ChevronDownGlyph({ color, size }: FeatherGlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Polyline points="6 9 12 15 18 9" stroke={color} {...stroke} />
+    </Svg>
+  );
+}

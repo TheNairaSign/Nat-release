@@ -50,7 +50,30 @@ export type GroceryWasteStats = {
   wasted: number;
   /** 0..1, the share of settled items actually used; null until something settles. */
   savedShare: number | null;
+  /** The foods that went to waste, most first (top 5). Absent from older servers. */
+  foods?: GroceryFoodWaste[];
+  /** Foods wasted at least twice, and at least half the time: worth buying less of. */
+  buyLess: GroceryFoodWaste[];
 };
+
+/** One food in the waste breakdown (web GroceryFoodWaste): "eggs", 3 wasted, 1 used. */
+export type GroceryFoodWaste = {
+  label: string;
+  wasted: number;
+  used: number;
+  /** Leftovers: the advice is to cook less, not buy less. */
+  cooked: boolean;
+};
+
+function parseFoodWaste(raw: unknown): GroceryFoodWaste[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((f) => {
+    if (!f || typeof f !== 'object') return [];
+    const r = f as Record<string, unknown>;
+    if (typeof r.label !== 'string' || !r.label) return [];
+    return [{ label: r.label, wasted: Number(r.wasted) || 0, used: Number(r.used) || 0, cooked: r.cooked === true }];
+  });
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -240,6 +263,8 @@ export function parseWasteStats(raw: unknown): GroceryWasteStats | null {
     used: Number(r.used) || 0,
     wasted: Number(r.wasted) || 0,
     savedShare: typeof r.savedShare === 'number' ? r.savedShare : null,
+    ...(Array.isArray(r.foods) ? { foods: parseFoodWaste(r.foods) } : {}),
+    buyLess: parseFoodWaste(r.buyLess),
   };
 }
 

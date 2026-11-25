@@ -296,7 +296,9 @@ export function GroceryHistoryScreen() {
           </View>
         ) : null}
 
-        {!loading && hasStats && stats ? <LastThirtyDaysCard share={stats.savedShare ?? 0} /> : null}
+        {!loading && hasStats && stats ? (
+          <LastThirtyDaysCard share={stats.savedShare ?? 0} foods={stats.foods} buyLess={stats.buyLess} />
+        ) : null}
 
         {!loading && expiring.length > 0 ? (
           // "Make a recipe →": a 132×36 lime pill hanging off the stats card's foot. It opens

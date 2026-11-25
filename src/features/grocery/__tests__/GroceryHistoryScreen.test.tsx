@@ -60,7 +60,18 @@ function http() {
           return { status: 200, body: { data: [{ _id: 'saved-recipe' }] } };
         }
         if (call.path.startsWith('/grocery/stats')) {
-          return { status: 200, body: { data: { used: 3, wasted: 1, savedShare: 0.75 } } };
+          return {
+            status: 200,
+            body: {
+              data: {
+                used: 3,
+                wasted: 1,
+                savedShare: 0.75,
+                foods: [{ label: 'eggs', wasted: 3, used: 1, cooked: false }],
+                buyLess: [{ label: 'eggs', wasted: 3, used: 1, cooked: false }],
+              },
+            },
+          };
         }
         if (call.method === 'PATCH') {
           const id = call.path.split('/').pop();
@@ -84,6 +95,19 @@ describe('GroceryHistoryScreen', () => {
     expect(screen.getByText('kiwi')).toBeTruthy();
     expect(screen.getByText('milk')).toBeTruthy();
     expect(screen.queryByText('bread')).toBeNull(); // used: not in Expiring
+  });
+
+  it('opens the summary on what went to waste, and what to buy less of', async () => {
+    const { port } = http();
+    await renderWithProviders(<GroceryHistoryScreen />, { ports: { http: port } });
+    await waitFor(() => expect(screen.getByTestId('grocery-stats-toggle')).toBeTruthy());
+    expect(screen.queryByTestId('grocery-stats-panel')).toBeNull();
+    await fireEvent.press(screen.getByTestId('grocery-stats-toggle'));
+    expect(screen.getByText('Eggs')).toBeTruthy();
+    expect(screen.getByText('3 of 4 wasted')).toBeTruthy();
+    expect(screen.getByText('Buy fewer eggs: 3 of the 4 you had went to waste.')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('grocery-stats-toggle'));
+    expect(screen.queryByTestId('grocery-stats-panel')).toBeNull();
   });
 
   it('History groups by shop and includes what was used', async () => {
