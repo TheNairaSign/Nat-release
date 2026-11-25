@@ -62,7 +62,9 @@ export function impactStats(items: DropoffActivity[], carbonUnits: number) {
 export function materialLabel(materialType: string): string {
   const labels: Record<string, string> = {
     plastic: 'Plastic',
-    fabric: 'Fabric',
+    fabric: 'Textiles',
+    fabrics: 'Textiles',
+    textiles: 'Textiles',
     glass: 'Glass',
     mixed: 'Mixed',
     organic: 'Organic',

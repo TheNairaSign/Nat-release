@@ -16,9 +16,20 @@ export const FALLBACK_DISPOSE_CHIPS = [
   'Fabrics',
 ] as const;
 
-export function capitalizeChip(item: string): string {
+const TEXTILE_NAMES = new Set(['fabric', 'fabrics', 'textile', 'textiles']);
+
+/**
+ * What a material is called on screen. The key stays "fabrics" (URS, places, past
+ * drop-offs); people read "Textiles" (Nov 25 decision).
+ */
+export function materialDisplayName(item: string): string {
   if (!item) return item;
+  if (TEXTILE_NAMES.has(item.trim().toLowerCase())) return 'Textiles';
   return item.charAt(0).toUpperCase() + item.slice(1);
+}
+
+export function capitalizeChip(item: string): string {
+  return materialDisplayName(item);
 }
 
 function isPlasticMaterialCategory(name: string): boolean {

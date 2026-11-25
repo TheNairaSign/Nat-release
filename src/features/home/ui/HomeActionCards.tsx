@@ -7,6 +7,7 @@ import {
   recycleHref,
   type GroceryItem,
 } from '@/core/grocery';
+import { materialDisplayName } from '@/core/materials';
 import { SnapCarousel } from '@/shared/ui/SnapCarousel';
 import { Text } from '@/shared/ui';
 import { CameraGlyph } from '@/shared/ui/icons/featherGlyphs';
@@ -89,7 +90,7 @@ export function HomeActionCards({
                 <Chip
                   key={item}
                   testID={`home-material-${item}`}
-                  label={item.toLowerCase()}
+                  label={materialDisplayName(item).toLowerCase()}
                   selected={on}
                   bg={on ? '#010B02' : '#A1D2D5'}
                   color={on ? '#A1D2D5' : '#000000'}

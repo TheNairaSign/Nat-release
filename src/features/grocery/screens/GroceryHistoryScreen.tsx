@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   buildDivertContext,
   buildDivertQuestion,
-  daysUntil,
   recycleHref,
   type GroceryItem,
   type GroceryItemStatus,
@@ -41,7 +40,11 @@ import { MakeRecipeSheet, type SavedRecipe } from '../ui/MakeRecipeSheet';
 
 /** "Today", "Yesterday", or a plain date: how people refer to a past shop. */
 export function scanDate(iso: string, today = new Date()): string {
-  const days = -daysUntil(iso, today);
+  // A scan is a moment, not a date: compare local calendar days, or a shop just after
+  // midnight in a timezone east of UTC reads "Yesterday".
+  const at = new Date(iso);
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((startOf(today) - startOf(at)) / 86_400_000);
   if (days <= 0) return 'Today';
   if (days === 1) return 'Yesterday';
   return new Date(iso).toLocaleDateString('en-GB', {

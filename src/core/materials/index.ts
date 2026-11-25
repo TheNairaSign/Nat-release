@@ -1,6 +1,7 @@
 export {
   FALLBACK_DISPOSE_CHIPS,
   capitalizeChip,
+  materialDisplayName,
   disposeChipsOrFallback,
   mergeWhereMaterialChips,
   sortMaterialCategories,

@@ -3,7 +3,7 @@
  * used, things diverted), counted on Impact beside drop-offs. Mirrors web
  * api/homeDiversionApi.ts and utils/homeDiversion.ts (main 964a78a).
  */
-import type { DropoffActivity, MaterialContribution } from './impact';
+import { materialLabel, type DropoffActivity, type MaterialContribution } from './impact';
 
 export type HomeDiversion = {
   food: number;
@@ -72,7 +72,7 @@ export function withHomeDiversion(
     } else {
       list.push({
         materialType: type,
-        label: type.charAt(0).toUpperCase() + type.slice(1),
+        label: materialLabel(type),
         totalQuantity: items,
         totalDropoffs: 0,
         carbonUnits: cu,

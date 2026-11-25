@@ -15,6 +15,7 @@ function formatMaterialLabel(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return trimmed;
   if (trimmed.toLowerCase() === 'all') return 'All materials';
+  if (/^(fabrics?|textiles?)$/i.test(trimmed)) return 'Textiles';
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 }
 
